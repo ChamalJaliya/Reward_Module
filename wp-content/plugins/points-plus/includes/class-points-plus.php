@@ -97,34 +97,59 @@ class Points_Plus {
 	 * @since    1.0.0
 	 * @access   private
 	 */
-	private function load_dependencies() {
+    private function load_dependencies() {
 
-		/**
-		 * The class responsible for orchestrating the actions and filters of the
-		 * core plugin.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-points-plus-loader.php';
+        /**
+         * The class responsible for orchestrating the actions and filters of the
+         * core plugin.
+         */
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-points-plus-loader.php';
 
-		/**
-		 * The class responsible for defining internationalization functionality
-		 * of the plugin.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-points-plus-i18n.php';
+        /**
+         * The class responsible for defining internationalization functionality
+         * of the plugin.
+         */
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-points-plus-i18n.php';
 
-		/**
-		 * The class responsible for defining all actions that occur in the admin area.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-points-plus-admin.php';
+        /**
+         * The class responsible for defining all actions that occur in the admin area.
+         */
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-points-plus-admin.php';
 
-		/**
-		 * The class responsible for defining all actions that occur in the public-facing
-		 * side of the site.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-points-plus-public.php';
+        /**
+         * The class responsible for defining all actions that occur in the public-facing
+         * side of the site.
+         */
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-points-plus-public.php';
 
-		$this->loader = new Points_Plus_Loader();
+        // Include Reward Module specific files
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-points-plus-api.php';
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-points-plus-rule-engine.php';
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-points-plus-execution.php';
 
-	}
+        // Post Types
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/rewards.php';
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/quests.php';
+
+//         ACF Fields
+        if (function_exists('acf_add_local_field_group')) {
+
+            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/quest-fields.php';
+            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/reward-fields.php';
+
+        }
+
+        // Admin
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/rewards-table.php';
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/quests-table.php';
+
+        // Shortcodes
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/rewards.php';
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/quests.php';
+
+        $this->loader = new Points_Plus_Loader();
+
+    }
 
 	/**
 	 * Define the locale for this plugin for internationalization.
