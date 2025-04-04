@@ -130,22 +130,26 @@ class Points_Plus {
         // Post Types
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/rewards.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/quests.php';
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/rules.php';
 
 //         ACF Fields
-        if (function_exists('acf_add_local_field_group')) {
-
-            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/quest-fields.php';
-            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/reward-fields.php';
-
-        }
+//        if (function_exists('acf_add_local_field_group')) {
+//
+//            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/quest-fields.php';
+//            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/reward-fields.php';
+//            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/rule-fields.php';
+//
+//        }
 
         // Admin
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/rewards-table.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/quests-table.php';
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/rules-table.php';
 
         // Shortcodes
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/rewards.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/quests.php';
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/rules.php';
 
         $this->loader = new Points_Plus_Loader();
 

@@ -1,0 +1,35 @@
+/* Basic styling for admin tables */
+.wp-list-table.posts.reward-item,
+.wp-list-table.posts.quest {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.wp-list-table.posts.reward-item th,
+.wp-list-table.posts.reward-item td,
+.wp-list-table.posts.quest th,
+.wp-list-table.posts.quest td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.wp-list-table.posts.reward-item th,
+.wp-list-table.posts.quest th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.wp-list-table.posts.reward-item tbody tr:hover,
+.wp-list-table.posts.quest tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* Alternate row styling */
+.wp-list-table.posts.reward-item tbody tr.alternate-row,
+.wp-list-table.posts.quest tbody tr.alternate-row {
+    background-color: #f2f2f2;
+}
+
+/* Add more specific styles as needed */

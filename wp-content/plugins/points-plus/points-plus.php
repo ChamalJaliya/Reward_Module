@@ -38,24 +38,30 @@ if ( ! defined( 'WPINC' ) ) {
  */
 define( 'POINTS_PLUS_VERSION', '1.0.0' );
 
+include_once plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-install.php';
 
 /**
  * The code that runs during plugin activation.
  * This action is documented in includes/class-points-plus-activator.php
  */
-function activate_points_plus() {
-	require_once plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-activator.php';
-	Points_Plus_Activator::activate();
+function activate_points_plus(): void {
+    include_once plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-activator.php';
+    Points_Plus_Activator::activate();
 
     // Call function to create custom tables on activation
-    points_plus_create_tables();
+    if ( class_exists( 'Points_Plus_Install' ) ) { // Check if the class exists
+        Points_Plus_Install::install();
+    } else {
+        error_log( 'Points_Plus_Install class not found!' ); // Log an error
+    }
 }
+
 
 /**
  * The code that runs during plugin deactivation.
  * This action is documented in includes/class-points-plus-deactivator.php
  */
-function deactivate_points_plus() {
+function deactivate_points_plus(): void {
 	require_once plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-deactivator.php';
 	Points_Plus_Deactivator::deactivate();
 }
@@ -75,32 +81,6 @@ require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-execution.php'
 /**
  * Function to create custom database tables.
  */
-function points_plus_create_tables(): void {
-    global $wpdb;
-    $charset_collate = $wpdb->get_charset_collate();
-
-    $rules_table_name = $wpdb->prefix . 'points_plus_rules';
-    $sql_rules = "CREATE TABLE IF NOT EXISTS $rules_table_name (
-        rule_id BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        status VARCHAR(10) NOT NULL DEFAULT 'inactive',
-        trigger_event VARCHAR(255) NOT NULL,
-        conditions LONGTEXT,
-        reward_logic LONGTEXT,
-        time_constraints LONGTEXT,
-        priority INT DEFAULT 0,
-        description TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) $charset_collate;";
-    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-    dbDelta( $sql_rules );
-
-    // Consider keeping your existing user_rewards table if it serves a different purpose.
-    // If it's for general reward logging, we might integrate with it later.
-    // For now, let's focus on the rules engine table.
-}
-
 
 add_action( 'init', 'points_plus_register_reward_post_type' );
 /**
@@ -120,16 +100,26 @@ function points_plus_register_quest_post_type(): void {
     \PointsPlus\PostTypes\Quests::register(); // Call the function directly
 }
 
-add_action( 'init', 'points_plus_register_acf_fields' );
+add_action( 'init', 'points_plus_register_rule_post_type' );
+/**
+ * Registers the Rule custom post type.
+ */
+function points_plus_register_rule_post_type(): void {
+    require_once plugin_dir_path( __FILE__ ) . 'includes/post-types/rules.php';
+    \PointsPlus\PostTypes\Rule_Builder::register();
+}
+
+//add_action( 'init', 'points_plus_register_acf_fields' );
 /**
  * Registers the ACF fields.
  */
-function points_plus_register_acf_fields(): void {
-    if ( function_exists( 'acf_add_local_field_group' ) ) {
-        require_once plugin_dir_path( __FILE__ ) . 'includes/fields/reward-fields.php';
-        require_once plugin_dir_path( __FILE__ ) . 'includes/fields/quest-fields.php';
-    }
-}
+//function points_plus_register_acf_fields(): void {
+//    if ( function_exists( 'acf_add_local_field_group' ) ) {
+//        require_once plugin_dir_path( __FILE__ ) . 'includes/fields/reward-fields.php';
+//        require_once plugin_dir_path( __FILE__ ) . 'includes/fields/quest-fields.php';
+//        require_once plugin_dir_path( __FILE__ ) . 'includes/fields/rule-fields.php';
+//    }
+//}
 
 add_action( 'init', 'points_plus_register_admin_tables' );
 /**
@@ -138,6 +128,7 @@ add_action( 'init', 'points_plus_register_admin_tables' );
 function points_plus_register_admin_tables(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/rewards-table.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/quests-table.php';
+    require_once plugin_dir_path( __FILE__ ) . 'includes/admin/rules-table.php';
 }
 
 add_action( 'init', 'points_plus_register_shortcodes' );
@@ -147,6 +138,7 @@ add_action( 'init', 'points_plus_register_shortcodes' );
 function points_plus_register_shortcodes(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/rewards.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/quests.php';
+    require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/rules.php';
 }
 
 
