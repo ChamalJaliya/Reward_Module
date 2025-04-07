@@ -45,6 +45,13 @@ if ( function_exists( 'acf_add_local_field_group' ) ) {
                 'type' => 'number',
                 'instructions' => 'The number of points awarded upon completion.',
             ),
+            array(
+                'key' => 'field_coins_reward',
+                'label' => 'Coins Reward',
+                'name' => 'coins_reward',
+                'type' => 'number',
+                'instructions' => 'The number of coins awarded upon completion.',
+            ),
             // Add other quest-specific fields here as needed
             array(
                 'key' => 'field_completion_criteria',

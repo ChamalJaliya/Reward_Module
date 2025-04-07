@@ -108,18 +108,28 @@ function points_plus_register_rule_post_type(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/post-types/rules.php';
     \PointsPlus\PostTypes\Rule_Builder::register();
 }
+add_action( 'init', 'points_plus_register_student_post_type' );
+/**
+ * Registers the Student custom post type.
+ */
+function points_plus_register_student_post_type(): void {
+    require_once plugin_dir_path( __FILE__ ) . 'includes/post-types/students.php';
+    \PointsPlus\PostTypes\Students::register();
+}
 
 //add_action( 'init', 'points_plus_register_acf_fields' );
 /**
  * Registers the ACF fields.
  */
-//function points_plus_register_acf_fields(): void {
-//    if ( function_exists( 'acf_add_local_field_group' ) ) {
-//        require_once plugin_dir_path( __FILE__ ) . 'includes/fields/reward-fields.php';
-//        require_once plugin_dir_path( __FILE__ ) . 'includes/fields/quest-fields.php';
-//        require_once plugin_dir_path( __FILE__ ) . 'includes/fields/rule-fields.php';
-//    }
-//}
+function points_plus_register_acf_fields(): void {
+    if ( function_exists( 'acf_add_local_field_group' ) ) {
+        require_once plugin_dir_path( __FILE__ ) . 'includes/fields/reward-fields.php';
+        require_once plugin_dir_path( __FILE__ ) . 'includes/fields/quest-fields.php';
+        require_once plugin_dir_path( __FILE__ ) . 'includes/fields/rule-fields.php';
+        require_once plugin_dir_path( __FILE__ ) . 'includes/fields/student-fields.php';
+
+    }
+}
 
 add_action( 'init', 'points_plus_register_admin_tables' );
 /**
@@ -129,6 +139,7 @@ function points_plus_register_admin_tables(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/rewards-table.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/quests-table.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/rules-table.php';
+    require_once plugin_dir_path( __FILE__ ) . 'includes/admin/students-table.php';
 }
 
 add_action( 'init', 'points_plus_register_shortcodes' );
@@ -139,6 +150,7 @@ function points_plus_register_shortcodes(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/rewards.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/quests.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/rules.php';
+    require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/students.php';
 }
 
 
