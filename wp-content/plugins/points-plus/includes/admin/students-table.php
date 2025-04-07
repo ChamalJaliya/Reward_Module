@@ -22,7 +22,7 @@ class Students_Table {
         $new_columns['title'] = __( 'Email', 'points-plus' );
         $new_columns['first_name'] = __( 'First Name', 'points-plus' );
         $new_columns['last_name'] = __( 'Last Name', 'points-plus' );
-        $new_columns['courses'] = __( 'Courses', 'points-plus' );
+        // $new_columns['courses'] = __( 'Courses', 'points-plus' );
         $new_columns['points'] = __( 'Points', 'points-plus' );
         $new_columns['keys'] = __( 'Keys', 'points-plus' );
         $new_columns['coins'] = __( 'Coins', 'points-plus' );
@@ -48,10 +48,10 @@ class Students_Table {
                 $last_name = get_field( 'last_name', $post_id );
                 echo $last_name ? esc_html( $last_name ) : '-';
                 break;
-            case 'courses':
-                $courses = get_field( 'courses', $post_id );
-                echo $courses ? wp_trim_words( $courses, 20, '...' ) : '-';
-                break;
+            // case 'courses':
+            //     $courses = get_field( 'courses', $post_id );
+            //     echo $courses ? wp_trim_words( $courses, 20, '...' ) : '-';
+            //     break;
             case 'points':
                 $points = get_field( 'points', $post_id );
                 echo $points !== '' ? esc_html( $points ) : '-';

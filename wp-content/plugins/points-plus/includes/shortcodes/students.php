@@ -69,10 +69,10 @@ class Students {
                     $output .= '<p class="points-plus-student-last-name">Last Name: ' . esc_html( $last_name ) . '</p>';
                 }
 
-                $courses = get_field( 'courses', $student->ID );
-                if ( $courses ) {
-                    $output .= '<p class="points-plus-student-courses">Courses: ' . wp_kses_post( $courses ) . '</p>';
-                }
+                // $courses = get_field( 'courses', $student->ID );
+                // if ( $courses ) {
+                //     $output .= '<p class="points-plus-student-courses">Courses: ' . wp_kses_post( $courses ) . '</p>';
+                // }
 
                 $points = get_field( 'points', $student->ID );
                 if ( $points !== '' ) {

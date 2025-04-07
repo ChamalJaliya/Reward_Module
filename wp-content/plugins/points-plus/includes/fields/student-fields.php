@@ -38,13 +38,13 @@ if ( function_exists( 'acf_add_local_field_group' ) ) {
                 'instructions' => 'Enter the student\'s last name.',
                 'required' => 1,
             ),
-            array(
-                'key' => 'field_student_courses',
-                'label' => 'Courses',
-                'name' => 'courses',
-                'type' => 'textarea',
-                'instructions' => 'List courses the student is enrolled in.',
-            ),
+            // array(
+            //     'key' => 'field_student_courses',
+            //     'label' => 'Courses',
+            //     'name' => 'courses',
+            //     'type' => 'textarea',
+            //     'instructions' => 'List courses the student is enrolled in.',
+            // ),
             array(
                 'key' => 'field_student_points',
                 'label' => 'Points',
