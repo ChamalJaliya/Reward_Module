@@ -57,6 +57,33 @@ class Points_Plus {
 	 */
 	protected $version;
 
+    /**
+     * The instance of the API handler.
+     *
+     * @since   0.2.0
+     * @access  protected
+     * @var     Points_Plus_API
+     */
+    protected $api;
+
+    /**
+     * The instance of the Rule Engine.
+     *
+     * @since   0.2.0
+     * @access  protected
+     * @var     Points_Plus_Rule_Engine
+     */
+    protected $rule_engine;
+
+    /**
+     * The instance of the Reward Execution handler.
+     *
+     * @since   0.2.0
+     * @access  protected
+     * @var     Points_Plus_Execution
+     */
+    protected $reward_execution;
+
 	/**
 	 * Define the core functionality of the plugin.
 	 *
@@ -78,6 +105,7 @@ class Points_Plus {
 		$this->set_locale();
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
+        $this->initialize_components();
 
 	}
 
@@ -172,7 +200,38 @@ class Points_Plus {
 
 	}
 
-	/**
+    /**
+     * Initialize the Reward Module components.
+     *
+     * This method creates instances of the classes responsible for handling API requests,
+     * rule evaluation, and reward execution. This gives us direct access to these
+     * components from the main plugin class.
+     *
+     * @since   0.2.0
+     * @access  private
+     */
+    private function initialize_components() {
+        // Initialize Reward Module components
+        $this->api = new Points_Plus_API();
+        $this->rule_engine = new Points_Plus_Rule_Engine();
+        $this->reward_execution = new Points_Plus_Execution();
+    }
+
+    /**
+     * Register all of the plugin hooks.
+     *
+     * @since    1.0.0
+     * @access   private
+     */
+    private function define_common_hooks() {
+        // Trigger points for rule evaluation
+        $this->loader->add_action( 'wp_login', $this->rule_engine, 'evaluate_rules_on_login', 10, 2 );
+        $this->loader->add_action( 'user_register', $this->rule_engine, 'evaluate_rules_on_user_register', 10, 1 );
+        $this->loader->add_action( 'post_published', $this->rule_engine, 'evaluate_rules_on_post_published', 10, 1 );
+        $this->loader->add_action( 'points_plus_quest_completed', $this->rule_engine, 'evaluate_rules_on_quest_completed', 10, 2 );
+    }
+
+    /**
 	 * Register all of the hooks related to the admin area functionality
 	 * of the plugin.
 	 *
@@ -204,6 +263,7 @@ class Points_Plus {
 
 	}
 
+
 	/**
 	 * Run the loader to execute all of the hooks with WordPress.
 	 *
@@ -211,6 +271,7 @@ class Points_Plus {
 	 */
 	public function run() {
 		$this->loader->run();
+        $this->define_common_hooks();
 	}
 
 	/**
@@ -243,5 +304,33 @@ class Points_Plus {
 	public function get_version() {
 		return $this->version;
 	}
+    /**
+     * Get the API handler instance.
+     *
+     * @since   0.2.0
+     * @return  Points_Plus_API
+     */
+    public function get_api() {
+        return $this->api;
+    }
 
+    /**
+     * Get the Rule Engine instance.
+     *
+     * @since   0.2.0
+     * @return  Points_Plus_Rule_Engine
+     */
+    public function get_rule_engine() {
+        return $this->rule_engine;
+    }
+
+    /**
+     * Get the Reward Execution handler instance.
+     *
+     * @since   0.2.0
+     * @return  Points_Plus_Execution
+     */
+    public function get_reward_execution() {
+        return $this->reward_execution;
+    }
 }
