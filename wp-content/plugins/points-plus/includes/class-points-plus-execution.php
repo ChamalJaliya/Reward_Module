@@ -3,7 +3,7 @@
 /**
  * Handles the reward execution logic for the Reward Module.
  *
- * @package Points_Plus
+ * @package    Points_Plus
  * @subpackage Points_Plus/includes
  */
 
@@ -23,7 +23,7 @@ class Points_Plus_Execution {
         return self::$instance;
     }
 
-    private function __construct() {
+    public function __construct() { // Changed from private to public
         // Plugin is being loaded.
     }
 
@@ -76,6 +76,57 @@ class Points_Plus_Execution {
             'reason' => "Coins multiplied by {$factor}",
         );
         $response_data['notifications'][]   = "Your coins have been multiplied by {$factor}.";
+    }
+
+    /**
+     * Applies a promotion to a user.
+     *
+     * @param int   $user_id The ID of the user.
+     * @param int   $promotion_id The ID of the promotion to apply.
+     * @param array $response_data (Reference) Array to store reward information and notifications.
+     */
+    public function apply_promotion( int $user_id, int $promotion_id, array &$response_data ): void {
+        // Implement the logic to apply the promotion here.
+        // This will likely involve:
+        // 1. Retrieving promotion details from the database (using $promotion_id).
+        // 2. Checking if the user is eligible for the promotion.
+        // 3. Granting the reward associated with the promotion.
+        // 4. Updating user data and logging the promotion application.
+
+        // For now, this is a placeholder:
+        $response_data['rewards_granted'][] = array(
+            'type'   => 'promotion',
+            'promotion_id' => $promotion_id,
+            'reason' => "Promotion applied.",
+        );
+        $response_data['notifications'][]   = "Promotion applied successfully!";
+    }
+
+    /**
+     * Executes a custom function.
+     *
+     * @param int   $user_id The ID of the user.
+     * @param string $function_name The name of the function to execute.
+     * @param string $function_params JSON-encoded string of parameters to pass to the function.
+     * @param array $response_data (Reference) Array to store reward information and notifications.
+     */
+    public function execute_custom_function( int $user_id, string $function_name, string $function_params, array &$response_data ): void {
+        // Implement the logic to execute a custom function here.
+        // **SECURITY WARNING:** This is a potentially dangerous feature, as it allows
+        // arbitrary code execution. You MUST implement robust security measures
+        // to prevent malicious code from being executed. Consider:
+        // - Validating the function name against a whitelist.
+        // - Sanitizing and validating the function parameters.
+        // - Using a sandboxing environment to restrict the function's access to the system.
+
+        // For now, this is a placeholder:
+        $response_data['rewards_granted'][] = array(
+            'type'   => 'custom_function',
+            'function_name' => $function_name,
+            'function_params' => $function_params,
+            'reason' => "Custom function executed.",
+        );
+        $response_data['notifications'][]   = "Custom function executed!";
     }
 
     /**

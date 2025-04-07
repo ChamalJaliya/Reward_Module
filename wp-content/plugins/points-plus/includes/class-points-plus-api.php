@@ -3,7 +3,7 @@
 /**
  * Handles the REST API endpoint for the Reward Module.
  *
- * @package Points_Plus
+ * @package    Points_Plus
  * @subpackage Points_Plus/includes
  */
 
@@ -23,12 +23,13 @@ class Points_Plus_API {
         return self::$instance;
     }
 
-    private function __construct() {
+    public function __construct() { // Changed from private to public
         // Plugin is being loaded.
     }
 
     private function init() {
         // Register REST API routes here
+        add_action( 'rest_api_init', array( $this, 'register_routes' ) );
     }
 
     /**
