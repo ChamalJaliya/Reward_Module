@@ -1,8 +1,9 @@
 <?php
+
 /**
- * Registers ACF fields for the Student custom post type.
+ * Registers ACF fields for student details.
  *
- * @package Points_Plus
+ * @package    Points_Plus
  * @subpackage Points_Plus/includes/fields
  */
 
@@ -15,75 +16,70 @@ if ( function_exists( 'acf_add_local_field_group' ) ) {
         'title' => 'Student Details',
         'fields' => array(
             array(
-                'key' => 'field_student_email',
+                'key' => 'field_email',
                 'label' => 'Email',
                 'name' => 'email',
                 'type' => 'email',
-                'instructions' => 'Enter the student\'s email address.',
-                'required' => 1,
             ),
             array(
-                'key' => 'field_student_first_name',
+                'key' => 'field_first_name',
                 'label' => 'First Name',
                 'name' => 'first_name',
                 'type' => 'text',
-                'instructions' => 'Enter the student\'s first name.',
-                'required' => 1,
             ),
             array(
-                'key' => 'field_student_last_name',
+                'key' => 'field_last_name',
                 'label' => 'Last Name',
                 'name' => 'last_name',
                 'type' => 'text',
-                'instructions' => 'Enter the student\'s last name.',
-                'required' => 1,
             ),
-            // array(
-            //     'key' => 'field_student_courses',
-            //     'label' => 'Courses',
-            //     'name' => 'courses',
-            //     'type' => 'textarea',
-            //     'instructions' => 'List courses the student is enrolled in.',
-            // ),
             array(
-                'key' => 'field_student_points',
+                'key' => 'field_points',
                 'label' => 'Points',
                 'name' => 'points',
                 'type' => 'number',
-                'instructions' => 'Total points earned by the student.',
             ),
             array(
-                'key' => 'field_student_keys',
+                'key' => 'field_keys',
                 'label' => 'Keys',
                 'name' => 'keys',
                 'type' => 'number',
-                'instructions' => 'Number of keys awarded to the student.',
             ),
             array(
-                'key' => 'field_student_coins',
+                'key' => 'field_coins',
                 'label' => 'Coins',
                 'name' => 'coins',
                 'type' => 'number',
-                'instructions' => 'Total coins the student has.',
             ),
             array(
-                'key' => 'field_student_status',
+                'key' => 'field_status',
                 'label' => 'Status',
                 'name' => 'status',
                 'type' => 'select',
-                'instructions' => 'Select the student\'s status.',
-                'choices' => array(
+                'choices' => array( // Add your status choices here!
                     'active' => 'Active',
                     'inactive' => 'Inactive',
+                    'pending' => 'Pending',
                 ),
-                'required' => 1,
+                'default_value' => false,
+                'allow_null' => 0,
+                'multiple' => 0,
+                'ui' => 0,
+                'return_format' => 'value',
             ),
             array(
-                'key' => 'field_student_mobile',
+                'key' => 'field_mobile_number',
                 'label' => 'Mobile Number',
                 'name' => 'mobile_number',
                 'type' => 'text',
-                'instructions' => 'Enter the mobile number of the student.',
+            ),
+            array(
+                'key' => 'field_date',
+                'label' => 'Date',
+                'name' => 'date',
+                'type' => 'date_time_picker',
+                'return_format' => 'Y-m-d H:i:s', // Adjust format as needed
+                'display_format' => 'F j, Y g:i a', // Adjust display format as needed
             ),
         ),
         'location' => array(
@@ -95,13 +91,13 @@ if ( function_exists( 'acf_add_local_field_group' ) ) {
                 ),
             ),
         ),
-        'menu_order'            => 0,
-        'position'              => 'normal',
-        'style'                 => 'default',
-        'label_placement'       => 'top',
+        'menu_order' => 0,
+        'position' => 'normal',
+        'style' => 'default',
+        'label_placement' => 'top',
         'instruction_placement' => 'label',
-        'hide_on_screen'        => '',
-        'active'                => true,
-        'description'           => '',
+        'hide_on_screen' => '',
+        'active' => true,
+        'description' => '',
     ) );
 }

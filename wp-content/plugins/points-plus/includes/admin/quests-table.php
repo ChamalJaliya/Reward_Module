@@ -23,6 +23,7 @@ class Quests_Table {
         $new_columns['quest_key'] = __( 'Quest Key', 'points-plus' );
         $new_columns['description'] = __( 'Description', 'points-plus' );
         $new_columns['points_reward'] = __( 'Points Reward', 'points-plus' );
+        $new_columns['coins_reward'] = __( 'Coins Reward', 'points-plus' );
         $new_columns['completion_criteria'] = __( 'Criteria', 'points-plus' );
         $new_columns['target_value'] = __( 'Target', 'points-plus' );
         $new_columns['date'] = __( 'Date', 'points-plus' );
@@ -48,6 +49,10 @@ class Quests_Table {
             case 'points_reward':
                 $points_reward = get_field( 'points_reward', $post_id );
                 echo $points_reward ? esc_html( $points_reward ) : '-';
+                break;
+            case 'coins_reward':
+                $coins_reward = get_field( 'coins_reward', $post_id );
+                echo $coins_reward ? esc_html( $coins_reward ) : '-';
                 break;
             case 'completion_criteria':
                 $completion_criteria = get_field( 'completion_criteria', $post_id );

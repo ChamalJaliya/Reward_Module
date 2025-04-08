@@ -1,9 +1,12 @@
 <?php
+
 /**
- * Defines the shortcode to display students on the frontend.
+ * Defines the shortcode to display student information (USE WITH CAUTION!).
  *
- * @package Points_Plus
+ * @package    Points_Plus
  * @subpackage Points_Plus/includes/shortcodes
+ *
+ * **WARNING: Displaying raw user data on the front-end can expose sensitive information and is generally NOT recommended.**
  */
 
 namespace PointsPlus\Shortcodes;
@@ -21,89 +24,109 @@ class Students {
      * Callback function for the 'points_plus_students' shortcode.
      *
      * @param array $atts Shortcode attributes.
-     * @return string HTML output to display the students.
+     * @return string HTML output to display student information.
      */
     public static function display_students( $atts ): string {
-        // Set default attributes and merge with user-defined attributes.
         $atts = shortcode_atts(
             array(
-                'numberposts' => -1, // Display all students by default.
-                'orderby'     => 'title',
+                'numberposts' => 10,  // Display 10 students by default
+                'orderby'     => 'display_name',
                 'order'       => 'ASC',
+                'role'        => 'student', // If you have a 'student' user role
+                'fields'      => 'all',    // Or a comma-separated list of fields
             ),
             $atts,
             'points_plus_students'
         );
 
-        // Build query arguments to fetch student posts.
         $args = array(
-            'post_type'      => 'student',
-            'posts_per_page' => (int) $atts['numberposts'],
-            'orderby'        => sanitize_text_field( $atts['orderby'] ),
-            'order'          => sanitize_text_field( $atts['order'] ),
+            'number'  => (int) $atts['numberposts'],
+            'orderby' => sanitize_text_field( $atts['orderby'] ),
+            'order'   => sanitize_text_field( $atts['order'] ),
+            'role'    => sanitize_text_field( $atts['role'] ),
         );
 
-        $students = get_posts( $args );
+        $users = get_users( $args );
 
-        // Start building the HTML output.
         $output = '<div class="points-plus-students-container">';
-        if ( ! empty( $students ) ) {
+        if ( ! empty( $users ) ) {
             $output .= '<ul class="points-plus-students-list">';
-            foreach ( $students as $student ) {
+            foreach ( $users as $user ) {
                 $output .= '<li class="points-plus-student-item">';
-                $output .= '<h3 class="points-plus-student-title">' . esc_html( get_the_title( $student->ID ) ) . '</h3>';
+                $output .= '<h3 class="points-plus-student-name">' . esc_html( $user->display_name ) . '</h3>';
 
-                // Display ACF fields for each student.
-                $email = get_field( 'email', $student->ID );
-                if ( $email ) {
-                    $output .= '<p class="points-plus-student-email">Email: ' . esc_html( $email ) . '</p>';
+                // Display ACF fields (WARNING: Be very careful what you display!)
+                $fields_to_display = explode(',', $atts['fields']);
+                $fields_to_display = array_map('trim', $fields_to_display); // Trim whitespace
+
+                if (in_array('email', $fields_to_display) || in_array('all', $fields_to_display)) {
+                    $email = get_field( 'email', 'user_' . $user->ID );
+                    if ( $email ) {
+                        $output .= '<p class="points-plus-student-email">Email: ' . esc_html( $email ) . '</p>';
+                    }
                 }
 
-                $first_name = get_field( 'first_name', $student->ID );
-                if ( $first_name ) {
-                    $output .= '<p class="points-plus-student-first-name">First Name: ' . esc_html( $first_name ) . '</p>';
+                if (in_array('first_name', $fields_to_display) || in_array('all', $fields_to_display)) {
+                    $first_name = get_field( 'first_name', 'user_' . $user->ID );
+                    if ( $first_name ) {
+                        $output .= '<p class="points-plus-student-first-name">First Name: ' . esc_html( $first_name ) . '</p>';
+                    }
                 }
 
-                $last_name = get_field( 'last_name', $student->ID );
-                if ( $last_name ) {
-                    $output .= '<p class="points-plus-student-last-name">Last Name: ' . esc_html( $last_name ) . '</p>';
+                if (in_array('last_name', $fields_to_display) || in_array('all', $fields_to_display)) {
+                    $last_name = get_field( 'last_name', 'user_' . $user->ID );
+                    if ( $last_name ) {
+                        $output .= '<p class="points-plus-student-last-name">Last Name: ' . esc_html( $last_name ) . '</p>';
+                    }
                 }
 
-                // $courses = get_field( 'courses', $student->ID );
-                // if ( $courses ) {
-                //     $output .= '<p class="points-plus-student-courses">Courses: ' . wp_kses_post( $courses ) . '</p>';
-                // }
-
-                $points = get_field( 'points', $student->ID );
-                if ( $points !== '' ) {
-                    $output .= '<p class="points-plus-student-points">Points: ' . esc_html( $points ) . '</p>';
+                if (in_array('points', $fields_to_display) || in_array('all', $fields_to_display)) {
+                    $points = get_field( 'points', 'user_' . $user->ID );
+                    if ( $points ) {
+                        $output .= '<p class="points-plus-student-points">Points: ' . esc_html( $points ) . '</p>';
+                    }
                 }
 
-                $keys = get_field( 'keys', $student->ID );
-                if ( $keys !== '' ) {
-                    $output .= '<p class="points-plus-student-keys">Keys: ' . esc_html( $keys ) . '</p>';
+                if (in_array('keys', $fields_to_display) || in_array('all', $fields_to_display)) {
+                    $keys = get_field( 'keys', 'user_' . $user->ID );
+                    if ( $keys ) {
+                        $output .= '<p class="points-plus-student-keys">Keys: ' . esc_html( $keys ) . '</p>';
+                    }
                 }
 
-                $coins = get_field( 'coins', $student->ID );
-                if ( $coins !== '' ) {
-                    $output .= '<p class="points-plus-student-coins">Coins: ' . esc_html( $coins ) . '</p>';
+                if (in_array('coins', $fields_to_display) || in_array('all', $fields_to_display)) {
+                    $coins = get_field( 'coins', 'user_' . $user->ID );
+                    if ( $coins ) {
+                        $output .= '<p class="points-plus-student-coins">Coins: ' . esc_html( $coins ) . '</p>';
+                    }
                 }
 
-                $status = get_field( 'status', $student->ID );
-                if ( $status ) {
-                    $output .= '<p class="points-plus-student-status">Status: ' . esc_html( ucfirst( $status ) ) . '</p>';
+                if (in_array('status', $fields_to_display) || in_array('all', $fields_to_display)) {
+                    $status = get_field( 'status', 'user_' . $user->ID );
+                    if ( $status ) {
+                        $output .= '<p class="points-plus-student-status">Status: ' . esc_html( $status ) . '</p>';
+                    }
                 }
 
-                $mobile = get_field( 'mobile_number', $student->ID );
-                if ( $mobile ) {
-                    $output .= '<p class="points-plus-student-mobile">Mobile: ' . esc_html( $mobile ) . '</p>';
+                if (in_array('mobile_number', $fields_to_display) || in_array('all', $fields_to_display)) {
+                    $mobile_number = get_field( 'mobile_number', 'user_' . $user->ID );
+                    if ( $mobile_number ) {
+                        $output .= '<p class="points-plus-student-mobile-number">Mobile Number: ' . esc_html( $mobile_number ) . '</p>';
+                    }
+                }
+
+                if (in_array('date', $fields_to_display) || in_array('all', $fields_to_display)) {
+                    $date = get_field( 'date', 'user_' . $user->ID );
+                    if ( $date ) {
+                        $output .= '<p class="points-plus-student-date">Date: ' . esc_html( $date ) . '</p>';
+                    }
                 }
 
                 $output .= '</li>';
             }
             $output .= '</ul>';
         } else {
-            $output .= '<p>No students available.</p>';
+            $output .= '<p>No students found.</p>';
         }
         $output .= '</div>';
 
@@ -111,5 +134,5 @@ class Students {
     }
 }
 
-// Register the shortcode.
+// Register the shortcode
 add_action( 'init', array( __NAMESPACE__ . '\\Students', 'register' ) );

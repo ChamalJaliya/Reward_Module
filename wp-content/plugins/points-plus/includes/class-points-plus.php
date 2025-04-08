@@ -161,15 +161,16 @@ class Points_Plus {
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/rules.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/students.php';
 
-    //     // ACF Fields
-    //    if (function_exists('acf_add_local_field_group')) {
 
-    //        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/quest-fields.php';
-    //        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/reward-fields.php';
-    //        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/rule-fields.php';
-    //        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/student-fields.php';
-
-    //    }
+//         ACF Fields
+//        if (function_exists('acf_add_local_field_group')) {
+//
+//            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/quest-fields.php';
+//            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/reward-fields.php';
+//            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/rule-fields.php';
+//            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/fields/student-fields.php';
+//
+//        }
 
         // Admin
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/rewards-table.php';
