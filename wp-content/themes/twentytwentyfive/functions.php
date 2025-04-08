@@ -333,61 +333,167 @@ function my_enqueue_quest_scripts()
 
 add_action('wp_enqueue_scripts', 'my_enqueue_quest_scripts');
 
+function my_enqueue_reward_scripts() {
+    error_log('my_enqueue_reward_scripts() is running!');
+    wp_enqueue_script(
+        'reward-handler',
+        get_template_directory_uri() . '/js/reward-handler.js',
+        array('jquery'),
+        '1.0', // Start with a new version number
+        true
+    );
+
+    wp_localize_script(
+        'reward-handler',
+        'reward_ajax_object', // Use a different object name
+        array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'redeem_reward_nonce' => wp_create_nonce('redeem_reward_nonce'),
+            'student_identifier' => 'cjaliya.sln2@gmail.com', // Remember to replace with dynamic value!
+            'ajax_error_message' => __('An error occurred. Please try again.', 'your-theme-text-domain')
+        )
+    );
+
+    wp_enqueue_style('dashicons'); // If reward scripts also use Dashicons
+}
+
+add_action('wp_enqueue_scripts', 'my_enqueue_reward_scripts');
+
 // --- End of ALL Custom Code --- //
 
 
 // --- Start of Header Info Shortcode --- //
 
 /**
- * Shortcode to display hardcoded student points, coins, and a bell icon.
+ * Shortcode to display student points, coins, notification bell, and rewards dropdown.
  * Usage: [student_header_info]
  */
-function student_header_info_shortcode_function()
-{
-    // Hardcode the email of the student whose info we always want to show
-    $target_email = 'cjaliya.sln2@gmail.com'; // <<< MAKE SURE THIS IS CORRECT
-
-    // Reuse the function we created earlier to find the student post ID
+function student_header_info_shortcode_function() {
+    // Hardcode the email of the student
+    $target_email   = 'cjaliya.sln2@gmail.com'; // <<< MAKE SURE THIS IS CORRECT
     $student_post_id = get_student_post_id_by_email($target_email);
 
-    $points = 0; $coins = 0; $unread_count = 0;
+    $points        = 0;
+    $coins         = 0;
+    $unread_count  = 0;
+    $rewards_output = '';
 
     if ($student_post_id && function_exists('get_field')) {
         // Get Points & Coins
         $points = get_field('points', $student_post_id) ?: 0;
-        $coins = get_field('coins', $student_post_id) ?: 0;
+        $coins  = get_field('coins', $student_post_id) ?: 0;
         $points = is_numeric($points) ? intval($points) : 0;
-        $coins = is_numeric($coins) ? intval($coins) : 0;
+        $coins  = is_numeric($coins) ? intval($coins) : 0;
 
         // Get Notifications and count unread
-        $repeater_field_key = 'student_notifications'; // Must match ACF setup
-        $notifications = get_field($repeater_field_key, $student_post_id);
+        $repeater_field_key = 'student_notifications';
+        $notifications     = get_field($repeater_field_key, $student_post_id);
         if (is_array($notifications)) {
             foreach ($notifications as $note) {
-                if (isset($note['is_read']) && !$note['is_read']) { // Check if sub-field exists and is false
+                if (isset($note['is_read']) && !$note['is_read']) {
                     $unread_count++;
                 }
             }
         }
+
+        // --- Fetch Reward Items ---
+        $reward_items = get_posts(array(
+            'post_type'      => 'reward-item',
+            'posts_per_page' => -1,
+        ));
+
+        if ($reward_items) {
+            $rewards_output .= '<div class="rewards-dropdown" style="display: none;">'; // Initially hidden
+            $rewards_output .= '<ul>';
+            foreach ($reward_items as $post) {
+                $reward_name        = get_the_title($post->ID);
+                $reward_description = get_the_content(null, false, $post->ID);
+                $required_coins     = get_field('required_coins', $post->ID) ?: 0;
+                $promotion_type     = get_field('promotion_type', $post->ID) ?: '';
+                $reload_value       = get_field('reload_value', $post->ID) ?: '';
+                $multiplication_type    = get_field('multiplication_type', $post->ID) ?: '';
+                $multiplication_factor  = get_field('multiplication_factor', $post->ID) ?: '';
+                $additional_type    = get_field('additional_type', $post->ID) ?: '';
+                $additional_reward  = get_field('additional_reward', $post->ID) ?: '';
+                $client_description = get_field('client_description', $post->ID) ?: '';
+                $reward_image       = get_the_post_thumbnail($post->ID, 'thumbnail');
+
+                if ($coins >= $required_coins) {
+                    $rewards_output .= '<li class="reward-item">';
+                    if ($reward_image) {
+                        $rewards_output .= '<div class="reward-image">' . $reward_image . '</div>';
+                    }
+                    $rewards_output .= '<span class="reward-name">' . esc_html($reward_name) . '</span><br>';
+                    if ($client_description) {
+                        $x_value = 0; // Default values for Points
+                        $y_value = 0; // Default values for Coins
+
+                        if ($promotion_type === 'addition') {
+                            if ($additional_type === 'Points' || $additional_type === 'Both') {
+                                $x_value = $additional_reward;
+                            }
+                            if ($additional_type === 'Coins' || $additional_type === 'Both') {
+                                $y_value = $additional_reward;
+                            }
+                        }
+
+                        $replaced_description = str_replace(
+                            array('[X]', '[Y]'),
+                            array(esc_html($x_value), esc_html($y_value)),
+                            $client_description
+                        );
+
+                        $rewards_output .= '<span class="reward-client-description">' . wp_kses_post($replaced_description) . '</span><br>';
+                    }
+                    if ($reward_description) {
+                        $rewards_output .= '<span class="reward-description">' . wp_kses_post($reward_description) . '</span><br>';
+                    }
+                    if ($required_coins > 0) {
+                        $rewards_output .= '<span class="reward-cost">Requires: ' . esc_html($required_coins) . ' Coins</span><br>';
+                    }
+
+                    // Conditional rendering based on promotion_type
+                    if ($promotion_type === 'reload' && $reload_value) {
+                        $rewards_output .= '<span class="reward-detail">Reload-Based: ' . esc_html($reload_value) . '</span><br>';
+                    } elseif ($promotion_type === 'multiplication' && $multiplication_type && $multiplication_factor) {
+                        $rewards_output .= '<span class="reward-detail">Multiplication-Based (' . esc_html($multiplication_type) . '): ×' . esc_html($multiplication_factor) . '</span><br>';
+                    } elseif ($promotion_type === 'addition' && $additional_type && $additional_reward) {
+                        $rewards_output .= '<span class="reward-detail">Addition-Based (' . esc_html($additional_type) . '): +' . esc_html($additional_reward) . '</span><br>';
+                    }
+
+                    $rewards_output .= '<button class="redeem-button" data-reward-id="' . esc_attr($post->ID) . '">Redeem</button>';
+                    $rewards_output .= '</li>';
+                }
+            }
+            $rewards_output .= '</ul>';
+            $rewards_output .= '</div>';
+        }
+        // --- End Fetch Reward Items ---
     }
 
-    // Prepare HTML output, including the hidden dropdown container
+    // Prepare HTML output
     $output = '<div class="student-header-info">';
     $output .= '<span class="student-points">Points: ' . esc_html($points) . '</span>';
     $output .= '<span class="student-coins">Coins: ' . esc_html($coins) . '</span>';
-    // Added data attribute to store student ID (or email as fallback)
-    $output .= '<div class="notification-bell-area" data-student-identifier="' . esc_attr($target_email) . '" style="position: relative;">';
+
+    // Rewards Icon Area (Wrapper)
+    $output .= '<div class="rewards-icon-area" style="position: relative; cursor: pointer;">';
+    $output .= '<span class="student-rewards-icon dashicons dashicons-tickets"></span>';
+    $output .= $rewards_output; // Add the hidden rewards content
+    $output .= '</div>'; // End wrapper
+
+    // Notification Bell Area
+    $output .= '<div class="notification-bell-area" data-student-identifier="' . esc_attr($target_email) . '" style="position: relative; cursor: pointer;">';
     $output .= '<span class="student-notification-icon dashicons dashicons-bell"></span>';
-    // Badge is created dynamically via JS or PHP based on count
     if ($unread_count > 0) {
         $output .= '<span class="notification-count-badge">' . esc_html($unread_count) . '</span>';
     } else {
-        // Add placeholder span so JS can always find it
         $output .= '<span class="notification-count-badge" style="display: none;">0</span>';
     }
-    // Hidden dropdown container - content added by JS
+    // Hidden notifications dropdown (will be populated by JS if you implement it)
     $output .= '<div class="notifications-dropdown" style="display: none;"></div>';
     $output .= '</div>'; // end .notification-bell-area
+
     $output .= '</div>'; // end .student-header-info
     return $output;
 }
@@ -556,5 +662,216 @@ function mark_notification_read_ajax() {
     }
 }
 
+add_action('wp_ajax_claim_daily_reward', 'claim_daily_reward_ajax');
+add_action('wp_ajax_nopriv_claim_daily_reward', 'claim_daily_reward_ajax');
+
+function claim_daily_reward_ajax() {
+    // Security Check
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'daily_reward_nonce')) {
+        wp_send_json_error(['message' => 'Nonce verification failed!']);
+        return;
+    }
+
+    // Get the student identifier (email)
+    $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : '';
+    if (empty($student_identifier)) {
+        wp_send_json_error(['message' => 'Student identifier (email) is missing.']);
+        return;
+    }
+
+    // Find the student's post ID
+    $student_post_id = get_student_post_id_by_email($student_identifier); // Assuming you have this function
+    if (!$student_post_id) {
+        wp_send_json_error(['message' => 'Could not find student profile.']);
+        return;
+    }
+
+    // --- DEFINE YOUR REWARD VALUES HERE ---
+    $reward_points = 20; // Example: 20 points
+    $reward_coins = 10;   // Example: 10 coins
+    // --- END REWARD VALUES ---
+
+    // Check eligibility
+    if (!is_student_eligible_for_daily_reward($student_post_id)) {
+        wp_send_json_error(['message' => 'You are not eligible to claim the daily reward yet.']);
+        return;
+    }
+
+    // Grant the reward
+    $reward_granted = grant_daily_reward($student_post_id, $reward_points, $reward_coins);
+
+    if ($reward_granted) {
+        // Get updated points and coins for the response
+        $updated_points = get_field('points', $student_post_id) ?: 0;
+        $updated_coins = get_field('coins', $student_post_id) ?: 0;
+
+        wp_send_json_success([
+            'message' => 'Daily reward claimed successfully!',
+            'points' => $updated_points,
+            'coins' => $updated_coins
+        ]);
+    } else {
+        wp_send_json_error(['message' => 'Failed to grant daily reward.']);
+    }
+}
+
+// --- Start of Daily Reward Functions --- //
+
+/**
+ * Checks if a student is eligible to claim their daily reward.
+ *
+ * @param int $student_post_id The Post ID of the student CPT.
+ * @return bool True if eligible, false otherwise.
+ */
+function is_student_eligible_for_daily_reward($student_post_id) {
+    if (!function_exists('get_field') || !$student_post_id) {
+        return false; // ACF not active or invalid student
+    }
+
+    $last_claimed = get_field('last_daily_reward_claimed', $student_post_id);
+
+    if (!$last_claimed) {
+        return true; // Never claimed before
+    }
+
+    $last_claimed_timestamp = strtotime($last_claimed);
+    $now = time();
+    $time_difference = $now - $last_claimed_timestamp;
+
+    return $time_difference >= 24 * 60 * 60; // 24 hours in seconds
+}
+
+/**
+ * Grants the daily reward to a student.
+ *
+ * @param int $student_post_id The Post ID of the student CPT.
+ * @param int $reward_points The number of points to award.
+ * @param int $reward_coins The number of coins to award.
+ * @return bool True on success, false on failure.
+ */
+function grant_daily_reward($student_post_id, $reward_points, $reward_coins) {
+    if (!function_exists('get_field') || !function_exists('update_field') || !$student_post_id) {
+        return false; // ACF not active or invalid student
+    }
+
+    // Get current values (with defaults to avoid errors)
+    $current_points = get_field('points', $student_post_id) ?: 0;
+    $current_coins = get_field('coins', $student_post_id) ?: 0;
+
+    // Calculate new totals
+    $new_points = $current_points + $reward_points;
+    $new_coins = $current_coins + $reward_coins;
+
+    // Update fields
+    $points_updated = update_field('points', $new_points, $student_post_id);
+    $coins_updated = update_field('coins', $new_coins, $student_post_id);
+    $last_claimed_updated = update_field('last_daily_reward_claimed', current_time('mysql'), $student_post_id);
+
+    return $points_updated && $coins_updated && $last_claimed_updated;
+}
+
+
+/**
+ * AJAX handler to fetch rewards.
+ */
+add_action('wp_ajax_fetch_rewards', 'fetch_rewards_ajax');
+add_action('wp_ajax_nopriv_fetch_rewards', 'fetch_rewards_ajax');
+
+function fetch_rewards_ajax()
+{
+    // Security check (if you use a nonce)
+    // check_ajax_referer('your_rewards_nonce', 'nonce');
+
+    // Get the student identifier (email) - You might need to adjust how you get this
+    $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : 'cjaliya.sln2@gmail.com';
+    $student_post_id = get_student_post_id_by_email($student_identifier);
+
+    if (!$student_post_id || !function_exists('get_field')) {
+        wp_send_json_error(['message' => 'Could not find student or ACF.']);
+        return;
+    }
+
+    $rewards_html = '<div class="rewards-modal-content">';
+    $rewards_html .= '<h3>Available Rewards</h3>';
+    $rewards_html .= '<ul>';
+
+    $reward_items = get_posts(array(
+        'post_type' => 'reward-item',
+        'posts_per_page' => -1,
+    ));
+
+    if ($reward_items) {
+        foreach ($reward_items as $post) {
+            $reward_name = get_the_title($post->ID);
+            $reward_description = get_the_content(null, false, $post->ID);
+            $required_coins = get_field('required_coins', $post->ID) ?: 0;
+            $promotion_type = get_field('promotion_type', $post->ID) ?: '';
+            $reload_value = get_field('reload_value', $post->ID) ?: '';
+            $multiplication_type = get_field('multiplication_type', $post->ID) ?: '';
+            $multiplication_factor = get_field('multiplication_factor', $post->ID) ?: '';
+            $additional_type = get_field('additional_type', $post->ID) ?: '';
+            $additional_reward = get_field('additional_reward', $post->ID) ?: '';
+            $client_description = get_field('client_description', $post->ID) ?: '';
+            $reward_image = get_the_post_thumbnail($post->ID, 'thumbnail');
+
+            // Get the student's coin count
+            $student_coins = get_field('coins', $student_post_id) ?: 0;
+
+            if ($student_coins >= $required_coins) {
+                $rewards_html .= '<li class="reward-item">';
+                if ($reward_image) {
+                    $rewards_html .= '<div class="reward-image">' . $reward_image . '</div>';
+                }
+                $rewards_html .= '<span class="reward-name">' . esc_html($reward_name) . '</span><br>';
+                if ($client_description) {
+                    $x_value = 0; // Default values for Points
+                    $y_value = 0; // Default values for Coins
+
+                    if ($promotion_type === 'addition') {
+                        if ($additional_type === 'Points' || $additional_type === 'Both') {
+                            $x_value = $additional_reward;
+                        }
+                        if ($additional_type === 'Coins' || $additional_type === 'Both') {
+                            $y_value = $additional_reward;
+                        }
+                    }
+
+                    $replaced_description = str_replace(
+                        array('[X]', '[Y]'),
+                        array(esc_html($x_value), esc_html($y_value)),
+                        $client_description
+                    );
+
+                    $rewards_html .= '<span class="reward-client-description">' . wp_kses_post($replaced_description) . '</span><br>';
+                }
+                if ($reward_description) {
+                    $rewards_html .= '<span class="reward-description">' . wp_kses_post($reward_description) . '</span><br>';
+                }
+                if ($required_coins > 0) {
+                    $rewards_html .= '<span class="reward-cost">Requires: ' . esc_html($required_coins) . ' Coins</span><br>';
+                }
+
+                // Conditional rendering based on promotion_type
+                if ($promotion_type === 'reload' && $reload_value) {
+                    $rewards_html .= '<span class="reward-detail">Reload-Based: ' . esc_html($reload_value) . '</span><br>';
+                } elseif ($promotion_type === 'multiplication' && $multiplication_type && $multiplication_factor) {
+                    $rewards_html .= '<span class="reward-detail">Multiplication-Based (' . esc_html($multiplication_type) . '): ×' . esc_html($multiplication_factor) . '</span><br>';
+                } elseif ($promotion_type === 'addition' && $additional_type && $additional_reward) {
+                    $rewards_html .= '<span class="reward-detail">Addition-Based (' . esc_html($additional_type) . '): +' . esc_html($additional_reward) . '</span><br>';
+                }
+
+                $rewards_html .= '<button class="redeem-button" data-reward-id="' . esc_attr($post->ID) . '">Redeem</button>';
+                $rewards_html .= '</li>';
+            }
+        }
+    } else {
+        $rewards_html .= '<li class="reward-item">No rewards available.</li>';
+    }
+
+    $rewards_html .= '</ul>';
+    $rewards_html .= '</div>';
+
+    wp_send_json_success(['rewards_html' => $rewards_html]);
+}
 
 
