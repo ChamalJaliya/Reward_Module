@@ -48,7 +48,46 @@ jQuery(document).ready(function($) {
 
     // Event listener for redeem button clicks (using delegation)
     $(document).on('click', '.redeem-button', function() {
-        var rewardId = $(this).data('reward-id');
-        redeemReward(rewardId);
+        // var rewardId = $(this).data('reward-id');
+        // redeemReward(rewardId);
+        claimDailyReward();
     });
+
+    // Function to handle daily reward claim via AJAX
+    function claimDailyReward() {
+        if (typeof reward_ajax_object === 'undefined' || !reward_ajax_object.ajax_url) {
+            console.error('reward_ajax_object or ajax_url not defined.');
+            alert('Error: Could not process daily reward claim.');
+            return;
+        }
+
+        $.ajax({
+            url: reward_ajax_object.ajax_url,
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'claim_daily_reward',
+                nonce: reward_ajax_object.daily_reward_nonce,
+                student_identifier: reward_ajax_object.student_identifier
+            },
+            beforeSend: function(xhr) {
+                console.log("Sending nonce:", reward_ajax_object.daily_reward_nonce); // Log the nonce being sent
+            },
+            success: function(response) {
+                if (response.success) {
+                    console.log('Daily reward claimed:', response.data);
+                    alert(response.data.message || 'Daily reward claimed!');
+                    // You could update UI here (points/coins display, etc.)
+                } else {
+                    console.error('Claim failed:', response.data);
+                    alert(response.data.message || 'Failed to claim daily reward.');
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('AJAX error during daily reward claim:', textStatus, errorThrown);
+                alert(reward_ajax_object.ajax_error_message || 'An unexpected error occurred.');
+            }
+        });
+    }
+
 });

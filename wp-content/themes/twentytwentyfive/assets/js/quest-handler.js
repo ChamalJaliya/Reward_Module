@@ -108,13 +108,13 @@ jQuery(document).ready(function ($) {
         }
     });
 
-    // Helper function to convert UTC string to local string
-    function convertUTCtoLocal(utcTimeString) {
-        // Append " UTC" to force interpretation as UTC time.
-        var utcDate = new Date(utcTimeString + " UTC");
-        // Return the date as a locale-specific string.
-        return utcDate.toLocaleString();
-    }
+    // // Helper function to convert UTC string to local string
+    // function convertUTCtoLocal(utcTimeString) {
+    //     // Append " UTC" to force interpretation as UTC time.
+    //     var utcDate = new Date(utcTimeString + " UTC");
+    //     // Return the date as a locale-specific string.
+    //     return utcDate.toLocaleString();
+    // }
 
     // Function to load notifications into the dropdown
     function loadNotificationsIntoDropdown() {
@@ -155,10 +155,10 @@ jQuery(document).ready(function ($) {
                             '<span class="notification-message">' + item.message + "</span>";
 
                         // Convert the UTC timestamp to local time before displaying it:
-                        var lcoalTimeStamp = convertUTCtoLocal(item.timestamp);
+                        // var lcoalTimeStamp = convertUTCtoLocal(item.timestamp);
                         listHtml +=
                             '<span class="notification-timestamp">' +
-                            lcoalTimeStamp +
+                            item.timestamp+
                             "</span>";
                         // Add "Mark Read" button only if unread
                         if (!item.is_read) {
