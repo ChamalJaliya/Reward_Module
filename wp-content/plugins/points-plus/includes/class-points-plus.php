@@ -160,6 +160,7 @@ class Points_Plus {
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/quests.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/rules.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/students.php';
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/students-redeems-table.php';
 
 
 //         ACF Fields
@@ -177,6 +178,7 @@ class Points_Plus {
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/quests-table.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/rules-table.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/students-table.php';
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/students-redeems-table.php';
 
         // Shortcodes
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/rewards.php';
