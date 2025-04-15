@@ -38,12 +38,15 @@ jQuery(document).ready(function($) {
     `);
 
     // Function to show modal with specific content
-    function showRewardModal(confirmationData) {
+    function showRewardModal(confirmationData, rewardId) {
         $('.reward-modal .confirmation-message').text(confirmationData.message || 'Confirm your reward redemption');
         $('.reward-modal .reload-value').text('₹' + confirmationData.reload_value);
         $('.reward-modal .phone-number').text(confirmationData.phone_number);
         $('.reward-modal .coins-cost').text(confirmationData.coins_cost);
         $('.reward-modal .remaining-coins').text(confirmationData.remaining_coins);
+
+        // Store the reward ID on the confirm button's data, so we know which reward to process
+        $('.reward-modal-confirm').data('reward-id', rewardId);
 
         $('.reward-modal').fadeIn();
     }
@@ -54,8 +57,17 @@ jQuery(document).ready(function($) {
     }
 
     // Event listeners for modal
-    $('.reward-modal-close, .reward-modal-cancel').on('click', hideRewardModal);
-    $('.reward-modal-overlay').on('click', hideRewardModal);
+    $('.reward-modal-close, .reward-modal-cancel, .reward-modal-overlay').on('click', hideRewardModal);
+    // $('.reward-modal-overlay').on('click', hideRewardModal);
+
+    // Bind confirm button once outside the AJAX call so that it persists.
+    // When the button is clicked, retrieve the reward ID from its data,
+    // hide the modal, and then call redeemReward() with isConfirmed = true.
+    $('.reward-modal-confirm').on('click', function() {
+        var rewardId = $(this).data('reward-id');
+        hideRewardModal();
+        redeemReward(rewardId, true);
+    });
 
     // Function to toggle the rewards dropdown
     function toggleRewardsDropdown() {
@@ -96,18 +108,19 @@ jQuery(document).ready(function($) {
                 $('.reward-modal-confirm').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
             },
             success: function(response) {
-                if (response.needs_confirmation) {
+                if (response.data && response.data.needs_confirmation) {
                     // Show confirmation modal
-                    showRewardModal(response.confirmation_data);
-                    // Set up confirm button handler
-                    $('.reward-modal-confirm').off('click').on('click', function() {
-                        // Store the reward ID in the button data for the confirm callback
-                        $(this).data('reward-id', rewardId);
-                        // Hide modal immediately while processing
-                        hideRewardModal();
-                        // Resend the request with confirmation
-                        redeemReward(rewardId, true);
-                    }).prop('disabled', false).text('Confirm');
+                    showRewardModal(response.data.confirmation_data, rewardId);
+                    // // Set up confirm button handler
+                    // $('.reward-modal-confirm').off('click').on('click', function() {
+                    //     // Store the reward ID in the button data for the confirm callback
+                    //     $(this).data('reward-id', rewardId);
+                    //     // Hide modal immediately while processing
+                    //     hideRewardModal();
+                    //     // Resend the request with confirmation
+                    //     redeemReward(rewardId, true);
+                    // }).prop('disabled', false).text('Confirm');
+                    $('.reward-modal-confirm').prop('disabled', false).text('Confirm');
                     return;
                 }
 
@@ -141,6 +154,7 @@ jQuery(document).ready(function($) {
 
     // Function to show styled alerts
     function showAlert(title, message, type = 'info') {
+        console.log("Showing alert:", title, message, type); // Debug log
         // Remove any existing alerts
         $('.reward-alert').remove();
 

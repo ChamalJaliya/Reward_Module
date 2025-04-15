@@ -199,26 +199,26 @@ if (!function_exists('handle_redeem_reward_ajax')) :
 
 
                 // If not yet confirmed, return confirmation request
-//                if (!$is_confirmed) {
-//                    $response = [
-//                        'success' => true,
-//                        'needs_confirmation' => true,
-//                        'message' => sprintf(
-//                            'We will send ₹%d reload to %s. Confirm to proceed?',
-//                            $reward_data['reload_value'],
-//                            $phone_number
-//                        ),
-//                        'confirmation_data' => [
-//                            'phone_number' => $phone_number,
-//                            'reload_value' => $reward_data['reload_value'],
-//                            'coins_cost' => $reward_data['required_coins'],
-//                            'current_coins' => $current_coins,
-//                            'remaining_coins' => $current_coins - $reward_data['required_coins']
-//                        ]
-//                    ];
-//                    wp_send_json_success($response);
-//                    wp_die(); // THIS WAS MISSING AND CRUCIAL
-//                }
+               if (!$is_confirmed) {
+                   $response = [
+                       'success' => true,
+                       'needs_confirmation' => true,
+                       'message' => sprintf(
+                           'We will send ₹%d reload to %s. Confirm to proceed?',
+                           $reward_data['reload_value'],
+                           $phone_number
+                       ),
+                       'confirmation_data' => [
+                           'phone_number' => $phone_number,
+                           'reload_value' => $reward_data['reload_value'],
+                           'coins_cost' => $reward_data['required_coins'],
+                           'current_coins' => $current_coins,
+                           'remaining_coins' => $current_coins - $reward_data['required_coins']
+                       ]
+                   ];
+                   wp_send_json_success($response);
+                   wp_die(); // THIS WAS MISSING AND CRUCIAL
+               }
             }
 
             // 8. Grant reward (only reaches here if all checks passed and confirmed if needed)
@@ -344,14 +344,14 @@ if (!function_exists('grant_reward')) :
                 error_log("grant_reward: Applying Reload-Based Reward.");
 
                 // Check if this is a confirmed request
-//                $is_confirmed = isset($_POST['confirmed']) && $_POST['confirmed'] === 'true';
-//
-//                if (!$is_confirmed) {
-//                    return [
-//                        'success' => false,
-//                        'message' => 'Reload request not confirmed'
-//                    ];
-//                }
+               $is_confirmed = isset($_POST['confirmed']) && $_POST['confirmed'] === 'true';
+
+               if (!$is_confirmed) {
+                   return [
+                       'success' => false,
+                       'message' => 'Reload request not confirmed'
+                   ];
+               }
 
                 $current_coins = get_field('coins', $student_post_id) ?: 0;
 
@@ -375,20 +375,20 @@ if (!function_exists('grant_reward')) :
                     ];
                 }
 
-                // Process the reload (this would call your actual reload API)
-//                $reload_processed = process_mobile_reload(
-//                    get_field('mobile_number', $student_post_id),
-//                    $reward_data['reload_value']
-//                );
-//
-//                if (!$reload_processed) {
-//                    // Refund coins if reload failed
-//                    update_field('coins', $current_coins, $student_post_id);
-//                    return [
-//                        'success' => false,
-//                        'message' => 'Reload processing failed. Coins have been refunded.'
-//                    ];
-//                }
+            //     // Process the reload (this would call your actual reload API)
+            //    $reload_processed = process_mobile_reload(
+            //        get_field('mobile_number', $student_post_id),
+            //        $reward_data['reload_value']
+            //    );
+
+            //    if (!$reload_processed) {
+            //        // Refund coins if reload failed
+            //        update_field('coins', $current_coins, $student_post_id);
+            //        return [
+            //            'success' => false,
+            //            'message' => 'Reload processing failed. Coins have been refunded.'
+            //        ];
+            //    }
 
                 // Record the transaction
                 $timestamp = date('Y-m-d H:i:s', current_time('timestamp'));
