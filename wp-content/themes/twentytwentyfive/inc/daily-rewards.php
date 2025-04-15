@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Daily reward system functionality with added error logging for debugging.
  */
@@ -47,11 +48,11 @@ if (!function_exists('claim_daily_reward_ajax')) :
         $reward_points = $daily_reward_data['points'];
         $reward_coins = $daily_reward_data['coins'];
         $cooldown_period = $daily_reward_data['cooldown'];
-        error_log("claim_daily_reward_ajax: Reward Points Finalllllll: " . $reward_points . ", Reward Coins: " . $reward_coins . ", Cooldown: " . $cooldown_period);
+        $daily_reward_post_id = $daily_reward_data['reward_id']; // Get the Reward Item post ID!
+        error_log("claim_daily_reward_ajax: Reward Points: " . $reward_points . ", Reward Coins: " . $reward_coins . ", Cooldown: " . $cooldown_period . ", Daily Reward Post ID: " . $daily_reward_post_id);
 
         // Check eligibility (Cooldown)
-        $is_eligible = is_student_eligible_for_daily_reward($student_post_id, $cooldown_period);
-        // $is_eligible = true;
+        $is_eligible = is_student_eligible_for_daily_reward($student_post_id, $cooldown_period, $daily_reward_post_id); // Pass the ID!
         error_log("claim_daily_reward_ajax: Is student eligible for daily reward: " . ($is_eligible ? 'true' : 'false'));
         if ($cooldown_period > 0 && !$is_eligible) {
         // if (!$is_eligible) {
@@ -61,7 +62,7 @@ if (!function_exists('claim_daily_reward_ajax')) :
         }
 
         // Grant the reward
-        $reward_granted_data = grant_daily_reward($student_post_id, $reward_points, $reward_coins);
+        $reward_granted_data = grant_daily_reward($student_post_id, $reward_points, $reward_coins, $daily_reward_post_id); // Pass the ID!
         error_log("claim_daily_reward_ajax: Reward Granted Data: " . print_r($reward_granted_data, true));
 
         if ($reward_granted_data['success']) {
@@ -89,13 +90,14 @@ if (!function_exists('grant_daily_reward')) :
     /**
      * Grants the daily reward to a student.
      *
-     * @param int $student_post_id The Post ID of the student CPT.
-     * @param int $reward_points The number of points to award.
-     * @param int $reward_coins The number of coins to award.
+     * @param int $student_post_id   The Post ID of the student CPT.
+     * @param int $reward_points     The number of points to award.
+     * @param int $reward_coins      The number of coins to award.
+     * @param int $daily_reward_post_id The Post ID of the "Reward Item" post (Daily Reward).
      * @return array An array containing success status and updated data.
      */
-    function grant_daily_reward($student_post_id, $reward_points, $reward_coins) {
-        error_log("grant_daily_reward: Function initiated for Student ID: " . $student_post_id . ", Points: " . $reward_points . ", Coins: " . $reward_coins);
+    function grant_daily_reward($student_post_id, $reward_points, $reward_coins, $daily_reward_post_id) { // Added $daily_reward_post_id
+        error_log("grant_daily_reward: Function initiated for Student ID: " . $student_post_id . ", Points: " . $reward_points . ", Coins: " . $reward_coins . ", Daily Reward Post ID: " . $daily_reward_post_id);
         if (!function_exists('get_field') || !function_exists('update_field') || !$student_post_id) {
             error_log("grant_daily_reward: ACF functions not found or Student Post ID is invalid.");
             return ['success' => false];
@@ -104,20 +106,24 @@ if (!function_exists('grant_daily_reward')) :
         $current_points = get_field('points', $student_post_id) ?: 0;
         $current_coins = get_field('coins', $student_post_id) ?: 0;
 
-
         $new_points = $current_points + $reward_points;
         $new_coins = $current_coins + $reward_coins;
-        error_log("grant_daily_reward: New Pointsssss: " . $new_points . ", New Coins: " . $new_coins);
-        error_log("grant_daily_reward: New Rewardsss: " . $reward_coins . ", New Coins: " . $reward_points);
+        error_log("grant_daily_reward: New Points: " . $new_points . ", New Coins: " . $new_coins);
 
         $points_updated = update_field('points', $new_points, $student_post_id);
         $coins_updated = update_field('coins', $new_coins, $student_post_id);
-        $last_claimed_updated = update_field('last_daily_reward_claimed', current_time('timestamp'), $student_post_id);
-        error_log("grant_daily_reward: Points Updated: " . ($points_updated ? 'true' : 'false') . ", Coins Updated: " . ($coins_updated ? 'true' : 'false') . ", Last Claimed Updated: " . ($last_claimed_updated ? 'true' : 'false'));
+        error_log("grant_daily_reward: Points Updated: " . ($points_updated ? 'true' : 'false') . ", Coins Updated: " . ($coins_updated ? 'true' : 'false'));
 
-        if (!$points_updated || !$coins_updated || !$last_claimed_updated) {
-            error_log("grant_daily_reward: Failed to update one or more fields.");
+        if (!$points_updated || !$coins_updated) {
+            error_log("grant_daily_reward: Failed to update point or coin fields.");
             return ['success' => false];
+        }
+
+        // Add the last claim to the 'claimed_history' CPT
+        $last_claimed_updated = manage_user_reward_claims($student_post_id, $daily_reward_post_id, current_time('timestamp'));
+        if (!$last_claimed_updated) {
+            error_log("grant_daily_reward: Failed to update user_reward_history.");
+            return ['success' => false, 'message' => 'Failed to update reward history.'];
         }
 
         // Add notification
@@ -146,12 +152,13 @@ if (!function_exists('is_student_eligible_for_daily_reward')) :
     /**
      * Checks if a student is eligible to claim their daily reward (based on cooldown).
      *
-     * @param int $student_post_id The Post ID of the student CPT.
+     * @param int $student_post_id   The Post ID of the student CPT.
      * @param int $cooldown_period The cooldown period in seconds.
+     * @param int $daily_reward_post_id The Post ID of the "Reward Item" post (Daily Reward).
      * @return bool True if eligible, false otherwise.
      */
-    function is_student_eligible_for_daily_reward($student_post_id, $cooldown_period) {
-        error_log("is_student_eligible_for_daily_reward: Checking eligibility for Student ID: " . $student_post_id . ", Cooldown: " . $cooldown_period);
+    function is_student_eligible_for_daily_reward($student_post_id, $cooldown_period, $daily_reward_post_id) { // Added $daily_reward_post_id
+        error_log("is_student_eligible_for_daily_reward: Checking eligibility for Student ID: " . $student_post_id . ", Cooldown: " . $cooldown_period . ", Daily Reward Post ID: " . $daily_reward_post_id);
         if (!function_exists('get_field') || !$student_post_id) {
             error_log("is_student_eligible_for_daily_reward: ACF functions not found or Student Post ID is invalid.");
             return false;
@@ -162,23 +169,21 @@ if (!function_exists('is_student_eligible_for_daily_reward')) :
             return true; // No cooldown
         }
 
-        $last_claimed = get_field('last_daily_reward_claimed', $student_post_id, true); // Updated to get_field
+        $last_claimed_timestamps = manage_user_reward_claims($student_post_id, $daily_reward_post_id); // Get all timestamps
         $now = time();
-        $last_claimed_timestamp = $last_claimed ? strtotime($last_claimed) : 0; // Convert to timestamp!
 
-        error_log("is_student_eligible_for_daily_reward: Last Claimed (timestamp): " . $last_claimed . " (" . ($last_claimed_timestamp ? date('Y-m-d H:i:s', $last_claimed_timestamp) : 'Never') . ")"); //Line 164
-        error_log("is_student_eligible_for_daily_reward: Current Time (UTC): " . $now . " (" . date('Y-m-d H:i:s', $now) . ")");
+        error_log("is_student_eligible_for_daily_reward: Last Claimed Timestamps: " . print_r($last_claimed_timestamps, true));
+        error_log("is_student_eligible_for_daily_reward: Current Time: " . $now);
 
-        if (!$last_claimed) {
-            error_log("is_student_eligible_for_daily_reward: Student has never claimed before, eligible.");
-            return true; // Never claimed before
+        $eligible = true;
+        if (is_array($last_claimed_timestamps)) {
+            foreach ($last_claimed_timestamps as $last_claimed_timestamp) {
+                if (time() - $last_claimed_timestamp < $cooldown_period) {
+                    $eligible = false;
+                    break; // No need to check further if one is within cooldown
+                }
+            }
         }
-
-        $diff = $now - $last_claimed_timestamp;
-        error_log("is_student_eligible_for_daily_reward: Time since last claim: " . $diff . " seconds");
-        error_log("is_student_eligible_for_daily_reward: Cooldown Period: " . $cooldown_period . " seconds");
-
-        $eligible = $diff >= $cooldown_period;
         error_log("is_student_eligible_for_daily_reward: Eligibility: " . ($eligible ? 'true' : 'false'));
         return $eligible;
     }
@@ -258,7 +263,8 @@ if (!function_exists('get_daily_reward_data')) :
             'success' => true,
             'points' => $reward_points,
             'coins' => $reward_coins,
-            'cooldown' => $cooldown_period
+            'cooldown' => $cooldown_period,
+            'reward_id' => $daily_reward_post_id // Return the Reward Item post ID!
         ];
     }
 endif;
@@ -371,5 +377,61 @@ if (!function_exists('add_notification_to_student_cpt')) :
         error_log("add_notification_to_student_cpt: Update successful: " . ($success ? 'true' : 'false'));
 
         return $success;
+    }
+endif;
+
+if (!function_exists('manage_reward_claims')) :
+    /**
+     * Helper function to manage the 'claimed_history' Repeater field.
+     *
+     * @param int    $student_post_id The Student CPT ID.
+     * @param int    $promotion_id    The ID of the specific promotion/reward (Reward Item post ID).
+     * @param int    $timestamp       (Optional) The timestamp to set. If null, retrieves the last claimed time.
+     * @return int|bool If $timestamp is null, returns the last claimed timestamp (or 0 if not found).
+     * If $timestamp is provided, returns true on success, false on failure.
+     */
+    function manage_reward_claims($student_post_id, $promotion_id, $timestamp = null) {
+        if (!function_exists('get_field') || !function_exists('update_field')) {
+            error_log('manage_last_reward_claims: ACF functions not available.');
+            return false;
+        }
+
+        $repeater_field = 'claimed_history'; // Your Repeater field name
+
+        $claimed_history = get_field($repeater_field, $student_post_id) ?: [];
+
+        if ($timestamp === null) {
+            // Get last claimed time
+            if (is_array($claimed_history)) {
+                foreach ($claimed_history as $claim) {
+                    if (is_array($claim) && isset($claim['promotion_id']) && is_array($claim['promotion_id'][0]) && isset($claim['promotion_id'][0]) && intval($claim['promotion_id'][0]) == $promotion_id) {
+                        return intval($claim['claimed_timestamp']);
+                    }
+                }
+            }
+            return 0; // Not found
+        } else {
+            // Update last claimed time
+            $updated = false;
+            if (is_array($claimed_history)) {
+                foreach ($claimed_history as &$claim) { // Use reference to modify the original array
+                    if (is_array($claim) && isset($claim['promotion_id']) && is_array($claim['promotion_id'][0]) && isset($claim['promotion_id'][0]) && intval($claim['promotion_id'][0]) == $promotion_id) {
+                        $claim['claimed_timestamp'] = $timestamp;
+                        $updated = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!$updated) {
+                // Add a new entry
+                $claimed_history[] = [
+                    'promotion_id'   => [$promotion_id], // Store as an array (Relationship field)
+                    'claimed_timestamp' => $timestamp,
+                ];
+            }
+
+            return update_field($repeater_field, $claimed_history, $student_post_id);
+        }
     }
 endif;
