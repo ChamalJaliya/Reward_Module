@@ -25,7 +25,16 @@ class Elementor_Adapter implements Elementor_Adapter_Interface {
 			return false;
 		}
 
-		return esc_html__( 'Default Kit', 'elementor' ) === get_post( $kit_id )->post_title;
+		// ----- Updated code snippet -----
+		$kit_post = get_post( $kit_id );
+
+		if ( ! $kit_post ) {
+			return false;
+		}
+		// ----- -----
+
+		// return esc_html__( 'Default Kit', 'elementor' ) === get_post( $kit_id )->post_title;
+		return esc_html__( 'Default Kit', 'elementor' ) === $kit_post->post_title;
 	}
 
 	public function get_count( $key ): ?int {

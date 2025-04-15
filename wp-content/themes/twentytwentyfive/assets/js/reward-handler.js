@@ -113,7 +113,7 @@ jQuery(document).ready(function($) {
 
                 if (response.success) {
                     // Success handling
-                    showAlert('Success', response.message || 'Reward redeemed successfully!', 'success');
+                    showAlert('Success', response.data.message || 'Reward redeemed successfully!', 'success');
 
                     // Update UI if needed
                     if (response.data.coins !== undefined) {
@@ -126,7 +126,7 @@ jQuery(document).ready(function($) {
                     toggleRewardsDropdown();
                 } else {
                     // Error handling
-                    showAlert('Error', response.message || 'Failed to redeem reward.', 'error');
+                    showAlert('Error', response.data.message || 'Failed to redeem reward.', 'error');
                 }
             },
             error: function(jqXHR, textStatus, errorThrown) {
@@ -147,7 +147,7 @@ jQuery(document).ready(function($) {
         // Create and show new alert
         $('body').append(`
             <div class="reward-alert reward-alert-${type}">
-                <strong>${title}</strong> ${message}
+                ${message}
                 <span class="reward-alert-close">&times;</span>
             </div>
         `);
