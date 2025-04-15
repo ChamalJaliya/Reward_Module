@@ -35,7 +35,7 @@ add_action('wp_ajax_nopriv_fetch_student_notifications', 'fetch_student_notifica
 
 if (!function_exists('fetch_student_notifications_ajax')) :
     function fetch_student_notifications_ajax() {
-        $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : 'cjaliya.sln2@gmail.com';
+        $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : 'nipunchamika11@gmail.com';
         $student_post_id = get_student_post_id_by_email($student_identifier);
 
         if (!$student_post_id || !function_exists('get_field')) {
@@ -72,7 +72,7 @@ add_action('wp_ajax_nopriv_mark_notification_read', 'mark_notification_read_ajax
 
 if (!function_exists('mark_notification_read_ajax')) :
     function mark_notification_read_ajax() {
-        $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : 'cjaliya.sln2@gmail.com';
+        $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : 'nipunchamika11@gmail.com';
         $notification_index = isset($_POST['notification_index']) ? intval($_POST['notification_index']) : -1;
         $mark_all = isset($_POST['mark_all']) && $_POST['mark_all'] === 'true';
 

@@ -48,7 +48,7 @@ add_shortcode('student_header_info', 'student_header_info_shortcode_function');
 
 if (!function_exists('student_header_info_shortcode_function')) :
     function student_header_info_shortcode_function() {
-        $target_email = 'cjaliya.sln2@gmail.com';
+        $target_email = 'nipunchamika11@gmail.com';
         $student_post_id = get_student_post_id_by_email($target_email);
 
         $points = 0;

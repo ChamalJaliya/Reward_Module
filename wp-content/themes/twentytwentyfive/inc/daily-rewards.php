@@ -11,11 +11,11 @@ if (!function_exists('claim_daily_reward_ajax')) :
         error_log('AJAX action: claim_daily_reward_ajax initiated.');
 
         // Security Check - COMMENTED OUT FOR TESTING
-        // if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'daily_reward_nonce')) {
-        //     error_log("Nonce verification failed! POST data: " . print_r($_POST, true));
-        //     wp_send_json_error(['success' => false, 'message' => 'Nonce verification failed!']);
-        //     return;
-        // }
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'daily_reward_nonce')) {
+            error_log("Nonce verification failed! POST data: " . print_r($_POST, true));
+            wp_send_json_error(['success' => false, 'message' => 'Nonce verification failed!']);
+            return;
+        }
 
         // Get the student identifier
         $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : '';
@@ -51,8 +51,10 @@ if (!function_exists('claim_daily_reward_ajax')) :
 
         // Check eligibility (Cooldown)
         $is_eligible = is_student_eligible_for_daily_reward($student_post_id, $cooldown_period);
+        // $is_eligible = true;
         error_log("claim_daily_reward_ajax: Is student eligible for daily reward: " . ($is_eligible ? 'true' : 'false'));
         if ($cooldown_period > 0 && !$is_eligible) {
+        // if (!$is_eligible) {
             error_log("claim_daily_reward_ajax: Student not eligible due to cooldown.");
             wp_send_json_error(['success' => false, 'message' => 'You are not eligible to claim the daily reward yet.']);
             return;

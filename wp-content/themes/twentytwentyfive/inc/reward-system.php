@@ -22,7 +22,7 @@ if (!function_exists('handle_redeem_reward_ajax')) :
 
         // Get reward ID and student identifier
         $reward_id = isset($_POST['reward_id']) ? intval($_POST['reward_id']) : 0;
-        $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : 'cjaliya.sln2@gmail.com';
+        $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : 'nipunchamika11@gmail.com';
 
         // Find student
         $student_post_id = get_student_post_id_by_email($student_identifier);

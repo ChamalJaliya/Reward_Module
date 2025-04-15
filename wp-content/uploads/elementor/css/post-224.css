@@ -1,0 +1,69 @@
+.elementor-224 .elementor-element.elementor-element-5774385d{--display:flex;}.elementor-widget-text-editor .eael-protected-content-message{font-family:var( --e-global-typography-secondary-font-family ), Sans-serif;font-weight:var( --e-global-typography-secondary-font-weight );}.elementor-widget-text-editor .protected-content-error-msg{font-family:var( --e-global-typography-secondary-font-family ), Sans-serif;font-weight:var( --e-global-typography-secondary-font-weight );}.elementor-widget-text-editor{font-family:var( --e-global-typography-text-font-family ), Sans-serif;font-weight:var( --e-global-typography-text-font-weight );color:var( --e-global-color-text );}.elementor-widget-text-editor.elementor-drop-cap-view-stacked .elementor-drop-cap{background-color:var( --e-global-color-primary );}.elementor-widget-text-editor.elementor-drop-cap-view-framed .elementor-drop-cap, .elementor-widget-text-editor.elementor-drop-cap-view-default .elementor-drop-cap{color:var( --e-global-color-primary );border-color:var( --e-global-color-primary );}.elementor-224 .elementor-element.elementor-element-794f2c5{--display:flex;}/* Start custom CSS for text-editor, class: .elementor-element-4bacb494 *//* --- Styling for the Quests List --- */
+
+/* Container for all quests */
+.quests-list {
+    max-width: 700px; /* Optional: Limit width */
+    margin: 20px auto; /* Optional: Center the list */
+}
+
+/* Individual quest item "card" */
+.quest-item {
+    background-color: #ffffff; /* Soft white background */
+    border: 1px solid #e0e0e0; /* Soft border */
+    border-radius: 8px;       /* Rounded corners */
+    padding: 20px;            /* More internal spacing */
+    margin-bottom: 20px;      /* Space between quest items */
+    box-shadow: 0 1px 5px rgba(0,0,0,0.1); /* Light shadow */
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.quest-item:hover {
+     box-shadow: 0 4px 12px rgba(0,0,0,0.12); /* Slightly deeper shadow on hover */
+}
+
+
+/* Quest Title */
+.quest-item h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 1.4em; /* Larger title */
+    color: #333333; /* Darker text for clarity */
+    font-weight: 600; /* Bold title */
+}
+
+/* Rewards Paragraph */
+.quest-item p {
+    margin-bottom: 20px; /* More space before button */
+    color: #666666;      /* Subtle grey text */
+    font-size: 1em;
+}
+
+/* Play Quest Button */
+.play-quest-button {
+    display: inline-block; /* Allow margin/padding */
+    background-color: #4A90E2; /* Soft blue */
+    color: white;
+    border: none;
+    padding: 12px 22px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.3s ease, opacity 0.3s ease;
+}
+
+/* Button Hover State */
+.play-quest-button:hover:not(:disabled) { /* Don't change hover style if disabled */
+    background-color: #357ABD; /* Slightly darker blue */
+}
+
+/* Button Disabled/Completed State */
+.play-quest-button:disabled,
+.play-quest-button[style*="background-color: lightgrey"] {
+    background-color: #d0d0d0 !important; /* Soft grey */
+    color: #b0b0b0 !important; /* Lighter grey text */
+    cursor: not-allowed;
+    opacity: 0.6;
+}/* End custom CSS */

@@ -21,7 +21,7 @@ if (!function_exists('my_enqueue_quest_scripts')) :
             'play_nonce' => wp_create_nonce('play_quest_nonce'),
             'fetch_nonce' => wp_create_nonce('notification_nonce'),
             'mark_read_nonce' => wp_create_nonce('notification_nonce'),
-            'student_identifier' => 'cjaliya.sln2@gmail.com'
+            'student_identifier' => 'nipunchamika11@gmail.com'
         ));
 
         wp_enqueue_style('dashicons');
@@ -48,7 +48,7 @@ if (!function_exists('my_enqueue_reward_scripts')) :
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'redeem_reward_nonce' => wp_create_nonce('redeem_reward_nonce'),
                 'daily_reward_nonce'  => wp_create_nonce('daily_reward_nonce'),
-                'student_identifier' => 'cjaliya.sln2@gmail.com',
+                'student_identifier' => 'nipunchamika11@gmail.com',
                 'ajax_error_message' => __('An error occurred. Please try again.', 'your-theme-text-domain')
             )
         );

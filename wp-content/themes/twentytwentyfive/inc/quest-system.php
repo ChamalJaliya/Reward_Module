@@ -29,7 +29,7 @@ if (!function_exists('handle_play_quest_ajax')) :
         $quest_id = intval($_POST['quest_id']);
 
         // 3. Find the Hardcoded Student Post ID by Email
-        $target_email = 'cjaliya.sln2@gmail.com';
+        $target_email = 'nipunchamika11@gmail.com';
         $student_post_id = get_student_post_id_by_email($target_email);
 
         if (!$student_post_id) {
