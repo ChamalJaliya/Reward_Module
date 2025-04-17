@@ -161,18 +161,35 @@ if (!function_exists('handle_redeem_reward_ajax')) :
             }
 
             // 6. Check eligibility
-            $is_eligible = is_student_eligible_for_reward(
+            // $is_eligible = is_student_eligible_for_reward(
+                //     $student_post_id,
+                //     $reward_data['cooldown_period'],
+                //     $reward_id,
+                //     $reward_data['redemption_limit']
+                // );
+                
+                // if (!$is_eligible) {
+                    //     $response['message'] = 'Not eligible to claim this reward at this time.';
+                    //     wp_send_json_error($response);
+                    //     wp_die();
+                    // }
+                    
+            // 6. Check eligibility
+            $eligibility = is_student_eligible_for_reward(
                 $student_post_id,
                 $reward_data['cooldown_period'],
                 $reward_id,
                 $reward_data['redemption_limit']
             );
-
-            if (!$is_eligible) {
-                $response['message'] = 'Not eligible to claim this reward at this time.';
-                wp_send_json_error($response);
+            
+            if (!$eligibility['eligible']) {
+                wp_send_json_error([
+                    'success' => false,
+                    'message' => $eligibility['message']
+                ]);
                 wp_die();
             }
+            
 
             // 7. Special handling for reload rewards requiring confirmation
             if ($reward_data['promotion_type'] === 'reload') {
@@ -480,13 +497,15 @@ if (!function_exists('is_student_eligible_for_reward')) :
 
         if (!function_exists('get_field') || !$student_post_id) {
             error_log("is_student_eligible_for_reward: ACF functions not found or Student Post ID is invalid.");
-            return false;
+            // return false;
+            return ['eligible' => false, 'message' => 'ACF functions not found or invalid student ID'];
         }
 
         // No cooldown means always eligible (if within redemption limits)
         if ($cooldown_period <= 0) {
             error_log("is_student_eligible_for_reward: No cooldown period set.");
-            return true;
+            // return true;
+            return ['eligible' => true, 'message' => ''];
         }
 
         $claim_data = manage_reward_claims($student_post_id, $reward_id, $redemption_limit);
@@ -499,7 +518,8 @@ if (!function_exists('is_student_eligible_for_reward')) :
         // If never claimed before, they're eligible
         if (empty($most_recent_timestamp)) {
             error_log("is_student_eligible_for_reward: No previous claims found - eligible");
-            return true;
+            // return true;
+            return ['eligible' => true, 'message' => ''];
         }
 
         $now = current_time('timestamp');
@@ -514,7 +534,8 @@ if (!function_exists('is_student_eligible_for_reward')) :
         // Check redemption limit first
         if ($redemption_limit > 0 && $claim_count >= $redemption_limit) {
             error_log("is_student_eligible_for_reward: Redemption limit reached ({$claim_count}/{$redemption_limit})");
-            return false;
+            // return false;
+            return ['eligible' => false, 'message' => 'Redemption limit reached'];
         }
 
         // Then check cooldown period
@@ -534,12 +555,18 @@ if (!function_exists('is_student_eligible_for_reward')) :
                 $time_remaining .= "{$seconds} second" . ($seconds > 1 ? 's' : '');
             }
 
+            $time_remaining = trim($time_remaining);
             error_log("is_student_eligible_for_reward: Cooldown not expired - Time remaining: " . trim($time_remaining));
-            return false;
+            // return false;
+            return [
+                'eligible' => false,
+                'message' => "Cooldown not expired - Time remaining: " . $time_remaining
+            ];
         }
 
         error_log("is_student_eligible_for_reward: Student is eligible");
-        return true;
+        // return true;
+        return ['eligible' => true, 'message' => ''];
     }
 endif;
 

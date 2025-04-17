@@ -107,7 +107,8 @@ jQuery(document).ready(function($) {
                 // Show loading indicator
                 $('.reward-modal-confirm').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
             },
-            success: function(response) {
+            success: function (response) {
+                // console.log("AJAX response:", response); // Debug: Check response structure
                 if (response.data && response.data.needs_confirmation) {
                     // Show confirmation modal
                     showRewardModal(response.data.confirmation_data, rewardId);
