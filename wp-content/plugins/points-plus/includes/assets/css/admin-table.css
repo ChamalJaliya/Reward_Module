@@ -1,0 +1,40 @@
+/* Simple on/off slider */
+.pp-toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+.pp-toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.pp-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 24px;
+}
+.pp-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+.pp-toggle-switch input:checked + .pp-slider {
+  background-color: #2196f3;
+}
+.pp-toggle-switch input:checked + .pp-slider:before {
+  transform: translateX(26px);
+}
