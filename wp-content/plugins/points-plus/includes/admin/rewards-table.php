@@ -108,7 +108,7 @@ add_action('admin_enqueue_scripts', function($hook){
             // CSS for slider switches
             wp_enqueue_style(
                 'points-plus-admin-tables',
-                plugins_url( '../assets/css/admin-table.css', __FILE__ ),
+                plugins_url( '../assets/css/rewards-table.css', __FILE__ ),
                 [],
                 POINTS_PLUS_VERSION
               );
