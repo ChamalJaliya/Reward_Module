@@ -78,11 +78,108 @@ class Rewards_Table {
         }
     }
 
+    /**
+     * Render our “Type” and “Status” dropdowns above the list table.
+     */
+    public static function add_admin_filters() {
+        global $typenow, $wp_query;
+
+        if ( $typenow !== 'reward-item' ) {
+            return;
+        }
+
+        // ---- Promotion Type dropdown ----
+        $types = [
+        ''              => __( 'All Types',    'points-plus' ),
+        'reload'        => __( 'Reload‑Based',         'points-plus' ),
+        'multiplication'=> __( 'Multiplication‑Based', 'points-plus' ),
+        'addition'      => __( 'Addition‑Based',       'points-plus' ),
+        ];
+        $current_type = isset( $_GET['filter_promotion_type'] ) ? $_GET['filter_promotion_type'] : '';
+        echo '<select name="filter_promotion_type" id="filter-by-type">';
+        foreach ( $types as $value => $label ) {
+            printf(
+                '<option value="%s"%s>%s</option>',
+                esc_attr( $value ),
+                selected( $current_type, $value, false ),
+                esc_html( $label )
+            );
+        }
+        echo '</select> ';
+
+        // ---- Status dropdown ----
+        // ACF true_false stores 1 = active, 0 or blank = inactive
+        $statuses = [
+        ''  => __( 'All Statuses', 'points-plus' ),
+        '1' => __( 'Active',       'points-plus' ),
+        '0' => __( 'Inactive',     'points-plus' ),
+        ];
+        $current_status = isset( $_GET['status_filter'] ) ? $_GET['status_filter'] : '';
+        echo '<select name="status_filter" id="filter-by-status">';
+        foreach ( $statuses as $value => $label ) {
+            printf(
+                '<option value="%s"%s>%s</option>',
+                esc_attr( $value ),
+                selected( $current_status, $value, false ),
+                esc_html( $label )
+            );
+        }
+        echo '</select>';
+    }
+
+    /**
+     * Push our $_GET parameters into the WP_Query’s meta_query
+     */
+    public static function apply_admin_filters( $query ) {
+        global $pagenow;
+
+        // only on the main edit.php list, for reward‑item CPT
+        if ( $pagenow !== 'edit.php' 
+        || ! isset( $_GET['post_type'] ) 
+        || $_GET['post_type'] !== 'reward-item' 
+        || ! $query->is_main_query()
+        ) {
+            return;
+        }
+
+        $meta_query = $query->get( 'meta_query', [] );
+
+        // filter by promotion_type?
+        if ( ! empty( $_GET['filter_promotion_type'] ) ) {
+            $meta_query[] = [
+                'key'     => 'promotion_type',
+                'value'   => sanitize_text_field( $_GET['filter_promotion_type'] ),
+                'compare' => '=',
+            ];
+        }
+
+        // filter by status?
+        if ( isset( $_GET['status_filter'] ) && $_GET['status_filter'] !== '' ) {
+            $meta_query[] = [
+                'key'     => 'status',
+                'value'   => sanitize_text_field( $_GET['status_filter'] ),
+                'compare' => '=',
+            ];
+        }
+
+        if ( ! empty( $meta_query ) ) {
+            $query->set( 'meta_query', $meta_query );
+        }
+    }
+
+
 }
 
 // Hook into WordPress filters and actions to modify the admin list table
 add_filter( 'manage_reward-item_posts_columns', array( __NAMESPACE__ . '\\Rewards_Table', 'set_reward_columns' ) );
 add_action( 'manage_reward-item_posts_custom_column', array( __NAMESPACE__ . '\\Rewards_Table', 'populate_reward_columns' ), 10, 2 );
+
+// show the dropdowns
+add_action( 'restrict_manage_posts', [ __NAMESPACE__ . '\\Rewards_Table', 'add_admin_filters' ] );
+
+// alter the query based on what was picked
+add_action( 'pre_get_posts',      [ __NAMESPACE__ . '\\Rewards_Table', 'apply_admin_filters' ] );
+
 
 add_action('admin_enqueue_scripts', function($hook){
     if ( $hook === 'edit.php' && function_exists('get_current_screen') ) {
