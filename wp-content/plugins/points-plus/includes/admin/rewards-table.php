@@ -79,7 +79,7 @@ class Rewards_Table {
     }
 
     /**
-     * Render our “Type” and “Status” dropdowns above the list table.
+     * Render “Type” and “Status” dropdowns above the list table.
      */
     public static function add_admin_filters() {
         global $typenow, $wp_query;
