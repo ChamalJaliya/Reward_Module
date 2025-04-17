@@ -125,6 +125,15 @@ function points_plus_register_students_redeems_post_type(): void {
     \PointsPlus\PostTypes\StudentsRedeems::register();
 }
 
+add_action( 'init', 'points_plus_register_student_quests_post_type' );
+/**
+ * Registers the Students Quests custom post type.
+ */
+function points_plus_register_student_quests_post_type(): void {
+    require_once plugin_dir_path( __FILE__ ) . 'includes/post-types/student-quests.php';
+    \PointsPlus\PostTypes\StudentQuests::register();
+}
+
 //add_action( 'init', 'points_plus_register_acf_fields' );
 /**
  * Registers the ACF fields.
@@ -149,6 +158,7 @@ function points_plus_register_admin_tables(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/rules-table.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/students-table.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/students-redeems-table.php';
+    require_once plugin_dir_path( __FILE__ ) . 'includes/admin/student-quests-table.php';
 }
 
 add_action( 'init', 'points_plus_register_shortcodes' );
