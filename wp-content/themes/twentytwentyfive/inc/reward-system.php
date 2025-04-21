@@ -122,10 +122,12 @@ if (!function_exists('is_student_eligible_for_reward')) :
         $include_students = get_field('include_students', $reward_id);
         $exclude_students = get_field('exclude_students', $reward_id);
         $eligibility_rules = get_field('eligibility_rules', $reward_id);
+        $valid_from = get_field('valid_from', $reward_id);
 
         error_log("Include Students: " . print_r($include_students, true));
         error_log("Exclude Students: " . print_r($exclude_students, true));
         error_log("Eligibility Rules: " . print_r($eligibility_rules, true));
+        error_log("Valid From: " . print_r($valid_from, true));
 
         // 2. Exclude check (highest priority)
         if (is_array($exclude_students) && in_array($student_post_id, $exclude_students)) {
@@ -145,7 +147,7 @@ if (!function_exists('is_student_eligible_for_reward')) :
             $passed_all_rules = true;
 
             foreach ($eligibility_rules as $rule_id) {
-                $rule_passed = evaluate_eligibility_rule($student_post_id, $rule_id);
+                $rule_passed = evaluate_eligibility_rule($student_post_id, $rule_id ,$valid_from);
 
                 if (!$rule_passed) {
                     error_log("FAIL: Student failed rule ID {$rule_id}");
@@ -209,11 +211,13 @@ if (!function_exists('evaluate_eligibility_rule')) :
      *
      * @param int $student_post_id
      * @param int $rule_id
+     * @param string $valid_from  The valid_from date for the reward (used for next_x_units)
      * @return bool
      */
-    function evaluate_eligibility_rule($student_post_id, $rule_id) {
+    function evaluate_eligibility_rule($student_post_id, $rule_id,$valid_from) {
         error_log("=== STARTING RULE EVALUATION ===");
         error_log("Evaluating rule ID: {$rule_id} for student {$student_post_id}");
+        error_log("Reward start date: {$valid_from} for reward");
 
         // Get rule data
         $rule_data = get_post($rule_id);
@@ -280,7 +284,8 @@ if (!function_exists('evaluate_eligibility_rule')) :
                     $student_post_id,
                     $field,
                     $time_scope,
-                    $time_params
+                    $time_params,
+                    $valid_from
                 );
 
                 error_log("Student value: {$student_value}");
@@ -356,9 +361,11 @@ if (!function_exists('get_student_data_with_time_scope')) :
      * @param string $field      Field name: 'quests_attempted', 'quests_completed', 'points_balance', 'coins_balance'.
      * @param string $time_scope Time scope: 'lifetime', 'current_session', 'last_x_units', 'specific_range'
      * @param array  $time_params Optional parameters for the time scope
+     * @param string $valid_from The valid_from date for the reward (used for next_x_units)
      * @return int The calculated or retrieved value.
      */
-    function get_student_data_with_time_scope($student_id, $field, $time_scope = 'lifetime', $time_params = []) {
+    function get_student_data_with_time_scope($student_id, $field, $time_scope = 'lifetime', $time_params = [] ,$valid_from = '') {
+        error_log("Student ID: {$student_id} | Time Scope: {$time_scope} | Time Params: " . print_r($time_params, true));
         error_log("Getting {$field} for student {$student_id} with scope {$time_scope}");
 
         // Handle balance fields (not time-scoped)
@@ -417,6 +424,29 @@ if (!function_exists('get_student_data_with_time_scope')) :
                             $filtered_history[] = $entry;
                         }
                         break;
+                    case 'next_x_units':
+                        if (empty($valid_from)) {
+                            error_log("next_x_units scope requires valid_from parameter");
+                            break;
+                        }
+
+                        $x_value = isset($time_params['x_value']) ? (int)$time_params['x_value'] : 1;
+                        $time_unit = isset($time_params['time_unit']) ? $time_params['time_unit'] : 'days';
+
+                        // Validate time unit
+                        $valid_units = ['minutes', 'hours', 'days', 'weeks', 'months'];
+                        if (!in_array($time_unit, $valid_units)) {
+                            $time_unit = 'days';
+                        }
+
+                        $start_time = strtotime($valid_from);
+                        $end_time = strtotime("+{$x_value} {$time_unit}", $start_time);
+
+                        if ($entry_timestamp >= $start_time && $entry_timestamp <= $end_time) {
+                            $filtered_history[] = $entry;
+                        }
+                        break;
+
 
                     case 'specific_range':
                         $start_date = isset($time_params['start_date']) ? strtotime($time_params['start_date']) : 0;
@@ -441,67 +471,6 @@ if (!function_exists('get_student_data_with_time_scope')) :
         return 0;
     }
 endif;
-
-//if (!function_exists('get_student_data_with_time_scope')) :
-//    /**
-//     * Gets student data with time scope consideration.
-//     *
-//     * @param int    $student_id The ID of the student.
-//     * @param string $field      Field name: 'quests_attempted', 'quests_completed', 'points_balance', 'coins_balance'.
-//     * @param string $time_scope Time scope: 'all', 'daily', 'weekly', 'monthly', 'custom'.
-//     * @param array  $time_params Optional. Used for custom ranges. ['from' => 'Y-m-d', 'to' => 'Y-m-d']
-//     *
-//     * @return int The calculated or retrieved value.
-//     */
-//    function get_student_data_with_time_scope($student_id, $field, $time_scope = 'all', $time_params = []) {
-//        error_log("Getting {$field} for student {$student_id} with scope {$time_scope}");
-//
-//        // Handle quests
-//        if (in_array($field, ['quests_attempted', 'quests_completed'])) {
-//            $quest_type = str_replace('quests_', '', $field);
-//            $history = get_student_quest_history($student_id, $quest_type); // already returns timestamped data
-//
-//            if ($time_scope === 'all') {
-//                return count($history);
-//            }
-//
-//            $filtered = array_filter($history, function ($entry) use ($time_scope, $time_params) {
-//                $timestamp = strtotime($entry['timestamp']);
-//
-//                switch ($time_scope) {
-//                    case 'daily':
-//                        return date('Y-m-d') === date('Y-m-d', $timestamp);
-//                    case 'weekly':
-//                        return date('oW') === date('oW', $timestamp); // ISO week number comparison
-//                    case 'monthly':
-//                        return date('Y-m') === date('Y-m', $timestamp);
-//                    case 'custom':
-//                        if (!empty($time_params['from']) && !empty($time_params['to'])) {
-//                            $from = strtotime($time_params['from']);
-//                            $to = strtotime($time_params['to'] . ' 23:59:59');
-//                            return $timestamp >= $from && $timestamp <= $to;
-//                        }
-//                        return false;
-//                    default:
-//                        return true;
-//                }
-//            });
-//
-//            return count($filtered);
-//        }
-//
-//        // Handle balance fields
-//        switch ($field) {
-//            case 'points_balance':
-//                return (int)(get_field('points', $student_id) ?: 0);
-//            case 'coins_balance':
-//                return (int)(get_field('coins', $student_id) ?: 0);
-//            default:
-//                error_log("ERROR: Unknown field: {$field}");
-//                return 0;
-//        }
-//    }
-//endif;
 
 
 if (!function_exists('get_student_quest_history')) :
@@ -810,177 +779,6 @@ if (!function_exists('handle_redeem_reward_ajax')) :
         }
     }
 endif;
-
-//if (!function_exists('grant_reward')) :
-//    /**
-//     * Grants the daily reward to a student.
-//     *
-//     * @param int $student_post_id   The Post ID of the student CPT.
-//     * @param int $reward_data     The number of points to award.
-//     * @param int $reward_id      The Post ID of the reward CPT
-//     * @return array An array containing success status and updated data.
-//     */
-//    function grant_reward($student_post_id, $reward_data ,$reward_id  ) {
-//        error_log("grant_reward: Function initiated for Student ID: " . $student_post_id . ", Reward Data: " . $reward_data . ", Reward Post ID: " . $reward_id);
-//
-//        if (!function_exists('get_field') || !function_exists('update_field') || !$student_post_id) {
-//            error_log("daily_reward: ACF functions not found or Student Post ID is invalid.");
-//            return ['success' => false];
-//        }
-//        $promotion_type = $reward_data['promotion_type'] ?? 'addition';
-//
-//        switch ($promotion_type) {
-//            case 'addition':
-//                error_log("grant_reward: Applying Addition-Based Reward.");
-//
-//                $current_points = get_field('points', $student_post_id) ?: 0;
-//                $current_coins = get_field('coins', $student_post_id) ?: 0;
-//
-//                $new_points = $current_points + $reward_data['points'];
-//                $new_coins = $current_coins + $reward_data['coins'];
-//
-//                error_log("grant_reward: New Points: " . $new_points . ", New Coins: " . $new_coins);
-//
-//                $points_updated = update_field('points', $new_points, $student_post_id);
-//                $coins_updated = update_field('coins', $new_coins, $student_post_id);
-//                error_log("grant_reward: Points Updated: " . ($points_updated ? 'true' : 'false') . ", Coins Updated: " . ($coins_updated ? 'true' : 'false'));
-//
-//                if (!$points_updated || !$coins_updated) {
-//                    error_log("grant_reward: Failed to update point or coin fields.");
-//                    return ['success' => false];
-//                }
-//
-//                // Add the last claim to the 'claimed_history' CPT
-//                $timestamp = date('Y-m-d H:i:s', current_time('timestamp'));
-//                $update_result = update_reward_claims($student_post_id, $reward_id, $timestamp);
-//                if (!$update_result) {
-//                    error_log("grant_reward: Failed to update user_reward_history.");
-//                    return ['success' => false, 'message' => 'Failed to update reward history.'];
-//                }
-//
-//
-//                // Add notification
-//                $notification_message = sprintf(
-//                    __('reward claimed: +%d Points, +%d Coins', 'your-theme-text-domain'),
-//                    $reward_data['points'],
-//                    $reward_data['coins']
-//                );
-//                $notification_added = add_notification_to_student_cpt($student_post_id, $notification_message);
-//                error_log("grant_additional_reward: Notification added: " . ($notification_added ? 'true' : 'false'));
-//
-//                // Get updated unread notification count
-//                $new_unread_count = get_student_unread_notification_count($student_post_id); // Helper function (see below)
-//                error_log("grant_reward: New Unread Notification Count: " . $new_unread_count);
-//
-//                return [
-//                    'success' => true,
-//                    'points' => $new_points,
-//                    'coins' => $new_coins,
-//                    'unread_count' => $new_unread_count
-//                ];
-//
-//            case 'multiplication':
-//                error_log("grant_reward: Applying Multiplication-Based Reward.");
-//                $multiplication_type = $reward_data['multiplication_type'] ?? 'both';
-//                $multifaction_factor = $reward_data['multifaction_factor'] ?? 1;
-//
-//                switch ($multiplication_type) {
-//                    case 'coins':
-////                        $new_coins *= $multifaction_factor;
-//                        break;
-//                    case 'points':
-//                        $current_stars = get_field('stars', $student_post_id) ?: 0;
-//                        $new_stars = $current_stars * $multifaction_factor;
-//                        $stars_updated = update_field('stars', $new_stars, $student_post_id);
-//                        error_log("grant_reward: Stars Updated: " . ($stars_updated ? 'true' : 'false'));
-//                        break;
-//                    case 'both':
-////                        $new_points *= $multifaction_factor;
-////                        $new_coins *= $multifaction_factor;
-//                        break;
-//                }
-//                break;
-//            case 'reload':
-//                error_log("grant_reward: Applying Reload-Based Reward.");
-//
-//                // Check if this is a confirmed request
-////                $is_confirmed = isset($_POST['confirmed']) && $_POST['confirmed'] === 'true';
-////
-////                if (!$is_confirmed) {
-////                    return [
-////                        'success' => false,
-////                        'message' => 'Reload request not confirmed'
-////                    ];
-////                }
-//
-//                $current_coins = get_field('coins', $student_post_id) ?: 0;
-//
-//                if ($current_coins < $reward_data['required_coins']) {
-//                    error_log("grant_reward: You don't have enough coins to redeem this reward.");
-//                    return [
-//                        'success' => false,
-//                        'message' => 'Insufficient coins balance'
-//                    ];
-//                }
-//
-//                // Deduct coins
-//                $new_coins = $current_coins - $reward_data['required_coins'];
-//                $coins_updated = update_field('coins', $new_coins, $student_post_id);
-//
-//                if (!$coins_updated) {
-//                    error_log("grant_reward: Failed to update coin fields.");
-//                    return [
-//                        'success' => false,
-//                        'message' => 'Failed to process payment'
-//                    ];
-//                }
-//
-//                // Process the reload (this would call your actual reload API)
-////                $reload_processed = process_mobile_reload(
-////                    get_field('mobile_number', $student_post_id),
-////                    $reward_data['reload_value']
-////                );
-////
-////                if (!$reload_processed) {
-////                    // Refund coins if reload failed
-////                    update_field('coins', $current_coins, $student_post_id);
-////                    return [
-////                        'success' => false,
-////                        'message' => 'Reload processing failed. Coins have been refunded.'
-////                    ];
-////                }
-//
-//                // Record the transaction
-//                $timestamp = date('Y-m-d H:i:s', current_time('timestamp'));
-//                $update_result = update_reward_claims($student_post_id, $reward_id, $timestamp);
-//
-//                if (!$update_result) {
-//                    error_log("grant_reward: Failed to update reward history.");
-//                    // Still return success since reload was processed
-//                }
-//
-//                // Add notification
-//                $notification_message = sprintf(
-//                    __('Your redeem reward request for ₹%d worth of reload is submitted. It will be processed within 2-3 working days.', 'your-theme-text-domain'),
-//                    $reward_data['reload_value']
-//                );
-//                add_notification_to_student_cpt($student_post_id, $notification_message);
-//
-//                return [
-//                    'success' => true,
-//                    'message' => __('Reload processed successfully!', 'your-theme-text-domain'),
-//                    'coins' => $new_coins,
-//                    'reload_value' => $reward_data['reload_value'],
-//                    'unread_count' => get_student_unread_notification_count($student_post_id)
-//                ];
-//            default:
-//                error_log("grant_reward: Unknown promotion type: " . $promotion_type);
-//                return ['success' => false, 'message' => 'Unknown promotion type.'];
-//        }
-//
-//
-//    }
-//endif;
 
 if (!function_exists('grant_reward')) :
     /**
@@ -1400,7 +1198,6 @@ if ( ! function_exists('get_completed_quest_ids_for_student') ) :
     }
 endif;
 
-
 if (!function_exists('add_notification_to_student_cpt')) :
     /**
      * Adds a notification entry to a student CPT's ACF repeater field.
@@ -1441,159 +1238,6 @@ if (!function_exists('add_notification_to_student_cpt')) :
         error_log("add_notification_to_student_cpt: Update successful: " . ($success ? 'true' : 'false'));
 
         return $success;
-    }
-endif;
-
-if (!function_exists('is_student_eligible_for_reward')) :
-    /**
-     * Checks if a student is eligible to claim their reward (based on include/exclude lists,
-     * cooldown, and redemption limits).
-     *
-     * @param int $student_post_id   The Post ID of the student CPT.
-     * @param int $cooldown_period   The cooldown period in seconds.
-     * @param int $reward_id         The Post ID of the "Reward Item" post.
-     * @param int $redemption_limit  The maximum number of redemptions allowed (0 for unlimited).
-     * @return bool True if eligible, false otherwise.
-     */
-    function is_student_eligible_for_reward($student_post_id, $cooldown_period, $reward_id, $redemption_limit) {
-        error_log("is_student_eligible_for_reward: Checking eligibility for Student ID: {$student_post_id}, Cooldown: {$cooldown_period}, Reward ID: {$reward_id}");
-
-        if (!function_exists('get_field') || !$student_post_id) {
-            error_log("is_student_eligible_for_reward: ACF functions not found or Student Post ID is invalid.");
-            return false;
-        }
-
-        // 1. Get include/exclude lists
-        $include_students = get_field('include_students', $reward_id);
-        $exclude_students = get_field('exclude_students', $reward_id);
-
-        error_log("is_student_eligible_for_reward: Include Students: " . print_r($include_students, true));
-        error_log("is_student_eligible_for_reward: Exclude Students: " . print_r($exclude_students, true));
-
-        // 2. Exclude check (highest priority)
-        if (is_array($exclude_students) && in_array($student_post_id, $exclude_students)) {
-            error_log("is_student_eligible_for_reward: Student is explicitly excluded.");
-            return false;
-        }
-
-        // 3. Include check (if not excluded)
-        if (is_array($include_students) && !empty($include_students) && !in_array($student_post_id, $include_students)) {
-            error_log("is_student_eligible_for_reward: Student is not in the include list.");
-            return false;
-        }
-
-        // 4. If both lists are empty, all students are eligible
-        if ((!is_array($include_students) || empty($include_students)) && (!is_array($exclude_students) || empty($exclude_students))) {
-            error_log("is_student_eligible_for_reward: Both include and exclude lists are empty - All students eligible.");
-            // 5. Cooldown and Redemption Limits Check (if not excluded)
-            if ($cooldown_period > 0 || $redemption_limit > 0) {
-                $claim_data = manage_reward_claims($student_post_id, $reward_id, $redemption_limit);
-                $most_recent_timestamp = $claim_data['most_recent_timestamp'];
-                $claim_count = $claim_data['claim_count'];
-
-                error_log("is_student_eligible_for_reward: Last Claimed Timestamp: " . ($most_recent_timestamp ?? 'Never'));
-                error_log("is_student_eligible_for_reward: Total claims: {$claim_count}");
-
-                // If never claimed before, and within redemption limits, they're eligible (cooldown not relevant)
-                if (empty($most_recent_timestamp) || ($redemption_limit > 0 && $claim_count < $redemption_limit)) {
-                    error_log("is_student_eligible_for_reward: No previous claims or within redemption limit - eligible");
-                    return true;
-                }
-
-                $now = current_time('timestamp');
-                $last_claimed_time = strtotime($most_recent_timestamp);
-                $time_since_last_claim = $now - $last_claimed_time;
-
-                error_log("is_student_eligible_for_reward: Current Time: {$now}");
-                error_log("is_student_eligible_for_reward: Last Claim Time: {$last_claimed_time}");
-                error_log("is_student_eligible_for_reward: Time Since Last Claim: {$time_since_last_claim} seconds");
-                error_log("is_student_eligible_for_reward: Cooldown Period: {$cooldown_period} seconds");
-
-                // Check redemption limit
-                if ($redemption_limit > 0 && $claim_count >= $redemption_limit) {
-                    error_log("is_student_eligible_for_reward: Redemption limit reached ({$claim_count}/{$redemption_limit})");
-                    return false;
-                }
-
-                // Then check cooldown period
-                $cooldown_remaining = $cooldown_period - $time_since_last_claim;
-                if ($cooldown_remaining > 0) {
-                    // Convert seconds to human-readable format
-                    $days = floor($cooldown_remaining / 86400);
-                    $hours = floor(($cooldown_remaining % 86400) / 3600);
-                    $minutes = floor(($cooldown_remaining % 3600) / 60);
-                    $seconds = $cooldown_remaining % 60;
-
-                    $time_remaining = '';
-                    if ($days > 0) $time_remaining .= "{$days} day" . ($days > 1 ? 's' : '') . ' ';
-                    if ($hours > 0) $time_remaining .= "{$hours} hour" . ($hours > 1 ? 's' : '') . ' ';
-                    if ($minutes > 0) $time_remaining .= "{$minutes} minute" . ($minutes > 1 ? 's' : '') . ' ';
-                    if ($seconds > 0 && ($days == 0 && $hours == 0)) {
-                        $time_remaining .= "{$seconds} second" . ($seconds > 1 ? 's' : '');
-                    }
-
-                    error_log("is_student_eligible_for_reward: Cooldown not expired - Time remaining: " . trim($time_remaining));
-                    return false;
-                }
-            }
-            error_log("is_student_eligible_for_reward: Student is eligible");
-            return true;
-        }
-
-        // 6. Cooldown and Redemption Limits Check (if not excluded or included)
-        if ($cooldown_period > 0 || $redemption_limit > 0) {
-            $claim_data = manage_reward_claims($student_post_id, $reward_id, $redemption_limit);
-            $most_recent_timestamp = $claim_data['most_recent_timestamp'];
-            $claim_count = $claim_data['claim_count'];
-
-            error_log("is_student_eligible_for_reward: Last Claimed Timestamp: " . ($most_recent_timestamp ?? 'Never'));
-            error_log("is_student_eligible_for_reward: Total claims: {$claim_count}");
-
-            // If never claimed before, and within redemption limits, they're eligible (cooldown not relevant)
-            if (empty($most_recent_timestamp) || ($redemption_limit > 0 && $claim_count < $redemption_limit)) {
-                error_log("is_student_eligible_for_reward: No previous claims or within redemption limit - eligible");
-                return true;
-            }
-
-            $now = current_time('timestamp');
-            $last_claimed_time = strtotime($most_recent_timestamp);
-            $time_since_last_claim = $now - $last_claimed_time;
-
-            error_log("is_student_eligible_for_reward: Current Time: {$now}");
-            error_log("is_student_eligible_for_reward: Last Claim Time: {$last_claimed_time}");
-            error_log("is_student_eligible_for_reward: Time Since Last Claim: {$time_since_last_claim} seconds");
-            error_log("is_student_eligible_for_reward: Cooldown Period: {$cooldown_period} seconds");
-
-            // Check redemption limit
-            if ($redemption_limit > 0 && $claim_count >= $redemption_limit) {
-                error_log("is_student_eligible_for_reward: Redemption limit reached ({$claim_count}/{$redemption_limit})");
-                return false;
-            }
-
-            // Then check cooldown period
-            $cooldown_remaining = $cooldown_period - $time_since_last_claim;
-            if ($cooldown_remaining > 0) {
-                // Convert seconds to human-readable format
-                $days = floor($cooldown_remaining / 86400);
-                $hours = floor(($cooldown_remaining % 86400) / 3600);
-                $minutes = floor(($cooldown_remaining % 3600) / 60);
-                $seconds = $cooldown_remaining % 60;
-
-                $time_remaining = '';
-                if ($days > 0) $time_remaining .= "{$days} day" . ($days > 1 ? 's' : '') . ' ';
-                if ($hours > 0) $time_remaining .= "{$hours} hour" . ($hours > 1 ? 's' : '') . ' ';
-                if ($minutes > 0) $time_remaining .= "{$minutes} minute" . ($minutes > 1 ? 's' : '') . ' ';
-                if ($seconds > 0 && ($days == 0 && $hours == 0)) {
-                    $time_remaining .= "{$seconds} second" . ($seconds > 1 ? 's' : '');
-                }
-
-                error_log("is_student_eligible_for_reward: Cooldown not expired - Time remaining: " . trim($time_remaining));
-                return false;
-            }
-        }
-
-        error_log("is_student_eligible_for_reward: Student is eligible");
-        return true;
     }
 endif;
 
