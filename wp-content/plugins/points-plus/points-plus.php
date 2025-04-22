@@ -54,6 +54,11 @@ function activate_points_plus(): void {
     } else {
         error_log( 'Points_Plus_Install class not found!' ); // Log an error
     }
+
+    // schedule the daily export
+    if ( function_exists( '\PointsPlus\Cron\schedule_daily_export' ) ) {
+        \PointsPlus\Cron\schedule_daily_export();
+    }
 }
 
 
@@ -64,6 +69,11 @@ function activate_points_plus(): void {
 function deactivate_points_plus(): void {
 	require_once plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-deactivator.php';
 	Points_Plus_Deactivator::deactivate();
+
+    // clear the daily export hook
+    if ( function_exists( '\PointsPlus\Cron\clear_daily_export' ) ) {
+        \PointsPlus\Cron\clear_daily_export();
+    }
 }
 
 register_activation_hook( __FILE__, 'activate_points_plus' );
@@ -77,6 +87,8 @@ require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus.php';
 require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-api.php'; // Include API handler
 require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-rule-engine.php'; // Include Rule Engine
 require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-execution.php'; // Include Reward Execution
+require plugin_dir_path( __FILE__ ) . 'includes/cron.php';
+
 
 // add_action( 'init', 'points_plus_register_custom_hooks' );
 // function points_plus_register_custom_hooks(): void {

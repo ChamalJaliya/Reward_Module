@@ -73,43 +73,6 @@ class StudentsRedeems_Table {
                 if (is_array($reward_id)) $reward_id = $reward_id[0] ?? null;
                 echo $reward_id ? intval( $reward_id ) : '—';
                 break;
-
-            // case 'mobile_number':
-            //     // pull the mobile_number from the Student post
-            //     $student_id = get_field( 'student', $post_id );
-            //     if (is_array($student_id)) $student_id = $student_id[0] ?? null;
-            //     if ( $student_id ) {
-            //         $mobile = get_field( 'mobile_number', $student_id );
-            //         echo $mobile ? esc_html( $mobile ) : '—';
-            //     } else {
-            //         echo '—';
-            //     }
-            //     break;
-
-            // case 'mobile_number':
-            //     // grab whatever get_field('student') returned…
-            //     $student = get_field('student', $post_id);
-            
-            //     // if it was an array (or object), pull out the first element/ID
-            //     if ( is_array( $student ) ) {
-            //         $student = intval( $student[0] ?? 0 );
-            //     }
-            //     elseif ( is_object( $student ) && ! empty( $student->ID ) ) {
-            //         $student = intval( $student->ID );
-            //     } else {
-            //         $student = intval( $student );
-            //     }
-            
-            //     // if there still isn’t a valid student ID, bail
-            //     if ( ! $student ) {
-            //         echo '—';
-            //         break;
-            //     }
-            
-            //     // now we can safely ask ACF for the mobile_number on that post
-            //     $mobile = get_field( 'mobile_number', $student );
-            //     echo $mobile ? esc_html( $mobile ) : '—';
-            //     break;
             
             case 'mobile_number':
                 $student = get_field('student', $post_id);
@@ -234,32 +197,6 @@ class StudentsRedeems_Table {
                 'compare' => 'LIKE'
             ];
         }
-        
-        // if (!empty($_GET['reward_filter'])) {
-        //     $meta_query[] = [
-        //         'key' => 'reward_item',
-        //         'value' => '"' . intval($_GET['reward_filter']) . '"',
-        //         'compare' => 'LIKE'
-        //     ];
-        // }
-        
-        // if ( ! empty( $_GET['reward_filter'] ) ) {
-            //     $reward_id = intval( $_GET['reward_filter'] );
-            
-            //     // // If ACF stores a single ID:
-            //     // $meta_query[] = [
-                //     //     'key'     => 'reward_item',
-                //     //     'value'   => $reward_id,
-                //     //     'compare' => '=',
-                //     // ];
-                
-                //     // —OR— if it stores a serialized array:
-                    //     $meta_query[] = [
-                        //         'key'     => 'reward_item',
-                        //         'value'   => sprintf(':"%d";', $reward_id),
-                        //         'compare' => 'LIKE',
-                        //     ];
-                        // }
 
         if ( ! empty( $_GET['reward_filter'] ) ) {
             $reward_id = intval( $_GET['reward_filter'] );
