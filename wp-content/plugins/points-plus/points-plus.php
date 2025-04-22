@@ -78,6 +78,11 @@ require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-api.php'; // I
 require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-rule-engine.php'; // Include Rule Engine
 require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-execution.php'; // Include Reward Execution
 
+// add_action( 'init', 'points_plus_register_custom_hooks' );
+// function points_plus_register_custom_hooks(): void {
+//     require_once plugin_dir_path( __FILE__ ) . 'includes/hooks/students-redeems-hooks.php';
+// }
+
 /**
  * Function to create custom database tables.
  */
@@ -144,6 +149,7 @@ function points_plus_register_acf_fields(): void {
         require_once plugin_dir_path( __FILE__ ) . 'includes/fields/quest-fields.php';
         require_once plugin_dir_path( __FILE__ ) . 'includes/fields/rule-fields.php';
         require_once plugin_dir_path( __FILE__ ) . 'includes/fields/student-fields.php';
+        // require_once plugin_dir_path( __FILE__ ) . 'includes/fields/student-redeems-fields.php';
 
     }
 }
@@ -159,6 +165,8 @@ function points_plus_register_admin_tables(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/students-table.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/students-redeems-table.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/student-quests-table.php';
+    require_once plugin_dir_path(__FILE__) . 'includes/hooks/student-redeems-title.php';
+    require_once plugin_dir_path(__FILE__) . 'includes/admin/students-redeems-export-handler.php';
 }
 
 add_action( 'init', 'points_plus_register_shortcodes' );
