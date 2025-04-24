@@ -1251,3 +1251,94 @@ if (!function_exists('confirm_reload_reward')) :
         ];
     }
 endif;
+
+// <?php
+// 1) Hook only when ACF saves that exact field on students_redeems CPT:
+add_filter(
+  'acf/update_value/key=field_6800fffc3f469',
+  'notify_on_redeem_status_change',
+  10, 3
+);
+
+function notify_on_redeem_status_change( $new_value, $post_id, $field ) {
+    // Log entry every time this runs:
+    error_log( sprintf(
+        "DEBUG: notify_on_redeem_status_change() called for post_id=%d, new_value=%s",
+        $post_id,
+        $new_value
+    ) );
+
+    // Only for our Students Redeems CPT:
+    $post_type = get_post_type( $post_id );
+    if ( $post_type !== 'students_redeems' ) {
+        error_log( "DEBUG: Skipping because post_type is {$post_type}" );
+        return $new_value;
+    }
+
+  // What was it before?
+  $old_value = get_post_meta( $post_id, 'status', true );
+  error_log( "DEBUG: post_id={$post_id} had old_value={$old_value}" );
+
+  // 1) pending → completed
+  if ( $old_value === 'pending' && $new_value === 'completed' ) {
+    $student_id  = get_field( 'student',       $post_id );
+    $reward_item = get_field( 'reward_item',   $post_id );
+    $title       = get_the_title( $reward_item );
+    $reload_amt  = get_field( 'reload_value', $reward_item );
+
+    $msg = sprintf(
+      /* translators: 1=amount, 2=reward title */
+      __( '%1$d reload of %2$s has successfully deposited to your mobile number.', 'your-theme-text-domain' ),
+      $reload_amt,
+      $title
+    );
+
+    error_log( sprintf(
+        "DEBUG: pending→completed: student_id=%d, reward_item=%d, reload_amt=%d, msg=%s",
+        $student_id,
+        $reward_item,
+        $reload_amt,
+        $msg
+      ) );
+
+    add_notification_to_student_cpt( $student_id, $msg );
+    error_log( "DEBUG: add_notification_to_student_cpt() called for COMPLETED" );
+  }
+
+  // 2) pending → failed
+  if ( $old_value === 'pending' && $new_value === 'failed' ) {
+    $student_id  = get_field( 'student',     $post_id );
+    $reward_item = get_field( 'reward_item', $post_id );
+    $title       = get_the_title( $reward_item );
+
+    // If you want a “reason,” you’ll need an ACF field for it—
+    // see step 3 below.  For now we’ll pull it if it exists:
+    $reason = get_field( 'failure_reason', $post_id ) ?: '';
+
+    $msg = sprintf(
+      /* translators: 1=reward title, 2=failure reason */
+      __( 'Our team has rejected the reload redeem related to %1$s. The coins have been refunded. Reason: %2$s', 'your-theme-text-domain' ),
+      $title,
+      $reason
+    );
+
+    error_log( sprintf(
+        "DEBUG: pending→failed: student_id=%d, reward_item=%d, reason=%s, msg=%s",
+        $student_id,
+        $reward_item,
+        $reason,
+        $msg
+      ) );
+
+    add_notification_to_student_cpt( $student_id, $msg );
+    error_log( "DEBUG: add_notification_to_student_cpt() called for FAILED" );
+  }
+
+  error_log( sprintf(
+    "DEBUG: notify_on_redeem_status_change() returning new_value=%s",
+    $new_value
+  ) );
+
+  return $new_value;
+}
+

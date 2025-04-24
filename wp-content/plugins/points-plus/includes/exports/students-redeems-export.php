@@ -146,6 +146,11 @@ function generate_students_redeems_csv(array $filters = [], $stream_to_browser =
         return false;
     }
 
+    // sort by Reload Value
+    usort($rows, function($a, $b) {
+        return (int)$a[5] <=> (int)$b[5];
+    });
+
     if ($stream_to_browser) {
         $filename = 'students_redeems_export_' . date('Ymd_His') . '.csv';
         header('Content-Type: text/csv');

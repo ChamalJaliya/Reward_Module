@@ -77,7 +77,7 @@ function handle_daily_export(): void {
 
     // 4) Send the email
     $to          = get_option( 'admin_email' );
-    // $to          = 'email@example.com';
+    // $to          = 'nipunchamika11@gmail.com';
     $subject     = 'Daily Pending Reloads Export — ' . date( 'Y-m-d' );
     $body        = "Hi there,\n\nPlease find attached today’s pending reload redemptions.\n\n— Differently.study";
     $attachments = [ $file ];
@@ -112,4 +112,3 @@ add_filter( 'cron_schedules', function( $schedules ) {
     }
     return $schedules;
 });
-
