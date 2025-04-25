@@ -159,6 +159,8 @@ function points_plus_register_admin_tables(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/students-table.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/students-redeems-table.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/student-quests-table.php';
+    require_once plugin_dir_path(__FILE__) . 'includes/hooks/student-redeems-title.php';
+    require_once plugin_dir_path(__FILE__) . 'includes/admin/students-redeems-export-handler.php';
 }
 
 add_action( 'init', 'points_plus_register_shortcodes' );

@@ -115,7 +115,8 @@ if (!function_exists('is_student_eligible_for_reward')) :
 
         if (!function_exists('get_field') || !$student_post_id) {
             error_log("ERROR: ACF functions not found or invalid Student ID");
-            return false;
+//            return false;
+            return ['eligible' => false, 'message' => 'ACF functions not found or invalid student ID'];
         }
 
         // 1. Get include/exclude lists
@@ -177,7 +178,8 @@ if (!function_exists('is_student_eligible_for_reward')) :
             // Check redemption limit first
             if ($redemption_limit > 0 && $claim_count >= $redemption_limit) {
                 error_log("FAIL: Redemption limit reached");
-                return false;
+                return ['eligible' => false, 'message' => 'Redemption limit reached'];
+//                return false;
             }
 
             // Then check cooldown period if they've claimed before
@@ -195,13 +197,18 @@ if (!function_exists('is_student_eligible_for_reward')) :
                 if ($cooldown_remaining > 0) {
                     $readable_time = seconds_to_readable($cooldown_remaining);
                     error_log("FAIL: Cooldown not expired - {$readable_time} remaining");
-                    return false;
+                    return [
+                        'eligible' => false,
+                        'message' => "Cooldown not expired - Time remaining: " . trim($readable_time)
+                    ];
+//                    return false;
                 }
             }
         }
 
         error_log("PASS: Student is eligible for reward");
-        return true;
+        return ['eligible' => true, 'message' => ''];
+//        return true;
     }
 endif;
 
@@ -690,18 +697,32 @@ if (!function_exists('handle_redeem_reward_ajax')) :
             }
 
             // 6. Check eligibility
-            $is_eligible = is_student_eligible_for_reward(
+            $eligibility = is_student_eligible_for_reward(
                 $student_post_id,
                 $reward_data['cooldown_period'],
                 $reward_id,
                 $reward_data['redemption_limit']
             );
 
-            if (!$is_eligible) {
-                $response['message'] = 'Not eligible to claim this reward at this time.';
-                wp_send_json_error($response);
+            if (!$eligibility['eligible']) {
+                wp_send_json_error([
+                    'success' => false,
+                    'message' => $eligibility['message']
+                ]);
                 wp_die();
             }
+//            $is_eligible = is_student_eligible_for_reward(
+//                $student_post_id,
+//                $reward_data['cooldown_period'],
+//                $reward_id,
+//                $reward_data['redemption_limit']
+//            );
+//
+//            if (!$is_eligible) {
+//                $response['message'] = 'Not eligible to claim this reward at this time.';
+//                wp_send_json_error($response);
+//                wp_die();
+//            }
 
             // 7. Special handling for reload rewards requiring confirmation
             if ($reward_data['promotion_type'] === 'reload') {
@@ -728,26 +749,26 @@ if (!function_exists('handle_redeem_reward_ajax')) :
 
 
                 // If not yet confirmed, return confirmation request
-//                if (!$is_confirmed) {
-//                    $response = [
-//                        'success' => true,
-//                        'needs_confirmation' => true,
-//                        'message' => sprintf(
-//                            'We will send ₹%d reload to %s. Confirm to proceed?',
-//                            $reward_data['reload_value'],
-//                            $phone_number
-//                        ),
-//                        'confirmation_data' => [
-//                            'phone_number' => $phone_number,
-//                            'reload_value' => $reward_data['reload_value'],
-//                            'coins_cost' => $reward_data['required_coins'],
-//                            'current_coins' => $current_coins,
-//                            'remaining_coins' => $current_coins - $reward_data['required_coins']
-//                        ]
-//                    ];
-//                    wp_send_json_success($response);
-//                    wp_die(); // THIS WAS MISSING AND CRUCIAL
-//                }
+                if (!$is_confirmed) {
+                    $response = [
+                        'success' => true,
+                        'needs_confirmation' => true,
+                        'message' => sprintf(
+                            'We will send ₹%d reload to %s. Confirm to proceed?',
+                            $reward_data['reload_value'],
+                            $phone_number
+                        ),
+                        'confirmation_data' => [
+                            'phone_number' => $phone_number,
+                            'reload_value' => $reward_data['reload_value'],
+                            'coins_cost' => $reward_data['required_coins'],
+                            'current_coins' => $current_coins,
+                            'remaining_coins' => $current_coins - $reward_data['required_coins']
+                        ]
+                    ];
+                    wp_send_json_success($response);
+                    wp_die(); // THIS WAS MISSING AND CRUCIAL
+                }
             }
 
             // 8. Grant reward (only reaches here if all checks passed and confirmed if needed)
@@ -1082,6 +1103,16 @@ if (!function_exists('grant_reward')) :
     function grant_reload_reward($student_post_id, $reward_data, $reward_id) {
         error_log("grant_reload_reward: Applying Reload-Based Reward.");
 
+
+        // Check if this is a confirmed request
+        $is_confirmed = isset($_POST['confirmed']) && $_POST['confirmed'] === 'true';
+
+        if (!$is_confirmed) {
+            return [
+                'success' => false,
+                'message' => 'Reload request not confirmed'
+            ];
+        }
         $current_coins = get_field('coins', $student_post_id) ?: 0;
 
         if ($current_coins < $reward_data['required_coins']) {
@@ -1241,245 +1272,359 @@ if (!function_exists('add_notification_to_student_cpt')) :
     }
 endif;
 
-if (!function_exists('manage_reward_claims')) :
+//if (!function_exists('manage_reward_claims')) :
+//    /**
+//     * Helper function to check for existing reward claims and check redemption limits.
+//     *
+//     * @param int    $student_post_id  The Student CPT ID.
+//     * @param int    $reward_item_id   The ID of the specific reward (Reward Item post ID).
+//     * @param int    $redemption_limit The maximum number of times the reward can be claimed (0 for unlimited).
+//     * @return array An array containing 'claim_count' (int), 'most_recent_timestamp' (string or null), and 'can_redeem' (bool).
+//     */
+//    function manage_reward_claims($student_post_id, $reward_item_id, $redemption_limit) {
+//        error_log("manage_reward_claims: Function started. Student ID: {$student_post_id}, Reward ID: {$reward_item_id}, Limit: {$redemption_limit}");
+//
+//        if (!function_exists('get_field')) {
+//            error_log('manage_reward_claims: ACF functions not available.');
+//            return ['claim_count' => 0, 'most_recent_timestamp' => null, 'can_redeem' => false, 'log_messages' => []];
+//        }
+//
+//        error_log("manage_reward_claims: ACF check passed.");
+//
+//        $log_messages = [];
+//        $student_redeems_posts = get_posts([
+//            'post_type' => 'students_redeems',
+//            'numberposts' => -1,
+//        ]);
+//
+//        error_log("manage_reward_claims: Retrieved " . count($student_redeems_posts) . " students_redeems posts.");
+//
+//        $claim_count = 0;
+//        $most_recent_timestamp = null;
+//
+//        if (!empty($student_redeems_posts)) {
+//            error_log("manage_reward_claims: Processing student_redeems posts.");
+//            foreach ($student_redeems_posts as $student_redeems_post) {
+//                error_log("manage_reward_claims: Checking post ID: " . $student_redeems_post->ID);
+//                $claimed_history = get_field('claimed_history', $student_redeems_post->ID);
+//                error_log("manage_reward_claims: Claimed history: " . print_r($claimed_history, true));
+//
+//                if (is_array($claimed_history)) {
+//                    error_log("manage_reward_claims: Claimed history is an array.");
+//                    foreach ($claimed_history as $claim) {
+//                        error_log("manage_reward_claims: Checking claim: " . print_r($claim, true));
+//                        // Check if this claim matches our student and reward
+//                        if (is_array($claim) &&
+//                            isset($claim['reward_item']) &&
+//                            is_array($claim['reward_item']) &&
+//                            isset($claim['reward_item'][0]) &&
+//                            intval($claim['reward_item'][0]) == $reward_item_id &&
+//                            isset($claim['student']) &&
+//                            is_array($claim['student']) &&
+//                            isset($claim['student'][0]) &&
+//                            intval($claim['student'][0]) == $student_post_id
+//                        ) {
+//                            error_log("manage_reward_claims: Found matching claim in post {$student_redeems_post->ID}");
+//
+//                            // Check if we have timestamps for this claim
+//                            if (isset($claim['claimed_timestamps']) && is_array($claim['claimed_timestamps'])) {
+//                                error_log("manage_reward_claims: Processing claimed timestamps.");
+//                                foreach ($claim['claimed_timestamps'] as $timestamp_entry) {
+//                                    if (isset($timestamp_entry['timestamp'])) {
+//                                        $claim_count++;
+//                                        $current_timestamp = strtotime($timestamp_entry['timestamp']);
+//
+//                                        // Update most recent timestamp if this one is newer
+//                                        if ($most_recent_timestamp === null || $current_timestamp > strtotime($most_recent_timestamp)) {
+//                                            $most_recent_timestamp = $timestamp_entry['timestamp'];
+//                                            error_log("manage_reward_claims: New most recent timestamp: {$most_recent_timestamp}");
+//                                        }
+//                                    }
+//                                }
+//                            } else {
+//                                error_log("manage_reward_claims: No claimed_timestamps found for this claim");
+//                            }
+//                        }
+//                    }
+//                } else {
+//                    error_log("manage_reward_claims: Claimed history is NOT an array.");
+//                }
+//            }
+//        } else {
+//            error_log("manage_reward_claims: No student_redeems posts found.");
+//        }
+//
+//        $can_redeem = ($redemption_limit == 0 || $claim_count < $redemption_limit);
+//        error_log("manage_reward_claims: Final count - claims: {$claim_count}, can_redeem: " . ($can_redeem ? 'true' : 'false'));
+//
+//        return [
+//            'claim_count' => $claim_count,
+//            'most_recent_timestamp' => $most_recent_timestamp,
+//            'can_redeem' => $can_redeem,
+//            'log_messages' => $log_messages,
+//        ];
+//    }
+//endif;
+if (! function_exists('manage_reward_claims')) :
     /**
-     * Helper function to check for existing reward claims and check redemption limits.
+     * Count and find the most recent claim by querying the students_redeems CPT.
      *
-     * @param int    $student_post_id  The Student CPT ID.
-     * @param int    $reward_item_id   The ID of the specific reward (Reward Item post ID).
-     * @param int    $redemption_limit The maximum number of times the reward can be claimed (0 for unlimited).
-     * @return array An array containing 'claim_count' (int), 'most_recent_timestamp' (string or null), and 'can_redeem' (bool).
+     * @param int $student_post_id   Student CPT ID.
+     * @param int $reward_item_id    Reward CPT ID.
+     * @param int $redemption_limit  Max allowed (0 = unlimited).
+     * @return array {
+     *   @type int    'claim_count'             Number of matching claim posts.
+     *   @type string|null 'most_recent_timestamp'  MySQL datetime or null.
+     *   @type bool   'can_redeem'              True if under limit.
+     * }
      */
-    function manage_reward_claims($student_post_id, $reward_item_id, $redemption_limit) {
-        error_log("manage_reward_claims: Function started. Student ID: {$student_post_id}, Reward ID: {$reward_item_id}, Limit: {$redemption_limit}");
-
-        if (!function_exists('get_field')) {
-            error_log('manage_reward_claims: ACF functions not available.');
-            return ['claim_count' => 0, 'most_recent_timestamp' => null, 'can_redeem' => false, 'log_messages' => []];
-        }
-
-        error_log("manage_reward_claims: ACF check passed.");
-
-        $log_messages = [];
-        $student_redeems_posts = get_posts([
-            'post_type' => 'students_redeems',
-            'numberposts' => -1,
+    function manage_reward_claims( $student_post_id, $reward_item_id, $redemption_limit ) {
+        // 1) Query all matching claim posts
+        $claims = get_posts([
+            'post_type'      => 'students_redeems',
+            'posts_per_page' => -1,
+            'meta_query'     => [
+                [
+                    'key'     => 'student',
+                    'value'   => $student_post_id,
+                    'compare' => '='
+                ],
+                [
+                    'key'     => 'reward_item',
+                    'value'   => $reward_item_id,
+                    'compare' => '='
+                ],
+            ],
         ]);
 
-        error_log("manage_reward_claims: Retrieved " . count($student_redeems_posts) . " students_redeems posts.");
+        $count = count( $claims );
+        $most_recent = null;
 
-        $claim_count = 0;
-        $most_recent_timestamp = null;
-
-        if (!empty($student_redeems_posts)) {
-            error_log("manage_reward_claims: Processing student_redeems posts.");
-            foreach ($student_redeems_posts as $student_redeems_post) {
-                error_log("manage_reward_claims: Checking post ID: " . $student_redeems_post->ID);
-                $claimed_history = get_field('claimed_history', $student_redeems_post->ID);
-                error_log("manage_reward_claims: Claimed history: " . print_r($claimed_history, true));
-
-                if (is_array($claimed_history)) {
-                    error_log("manage_reward_claims: Claimed history is an array.");
-                    foreach ($claimed_history as $claim) {
-                        error_log("manage_reward_claims: Checking claim: " . print_r($claim, true));
-                        // Check if this claim matches our student and reward
-                        if (is_array($claim) &&
-                            isset($claim['reward_item']) &&
-                            is_array($claim['reward_item']) &&
-                            isset($claim['reward_item'][0]) &&
-                            intval($claim['reward_item'][0]) == $reward_item_id &&
-                            isset($claim['student']) &&
-                            is_array($claim['student']) &&
-                            isset($claim['student'][0]) &&
-                            intval($claim['student'][0]) == $student_post_id
-                        ) {
-                            error_log("manage_reward_claims: Found matching claim in post {$student_redeems_post->ID}");
-
-                            // Check if we have timestamps for this claim
-                            if (isset($claim['claimed_timestamps']) && is_array($claim['claimed_timestamps'])) {
-                                error_log("manage_reward_claims: Processing claimed timestamps.");
-                                foreach ($claim['claimed_timestamps'] as $timestamp_entry) {
-                                    if (isset($timestamp_entry['timestamp'])) {
-                                        $claim_count++;
-                                        $current_timestamp = strtotime($timestamp_entry['timestamp']);
-
-                                        // Update most recent timestamp if this one is newer
-                                        if ($most_recent_timestamp === null || $current_timestamp > strtotime($most_recent_timestamp)) {
-                                            $most_recent_timestamp = $timestamp_entry['timestamp'];
-                                            error_log("manage_reward_claims: New most recent timestamp: {$most_recent_timestamp}");
-                                        }
-                                    }
-                                }
-                            } else {
-                                error_log("manage_reward_claims: No claimed_timestamps found for this claim");
-                            }
-                        }
-                    }
-                } else {
-                    error_log("manage_reward_claims: Claimed history is NOT an array.");
-                }
+        // 2) Find the latest timestamp
+        foreach ( $claims as $post ) {
+            // ACF field
+            if ( function_exists('get_field') ) {
+                $ts = get_field( 'claimed_timestamp', $post->ID );
+            } else {
+                $ts = get_post_meta( $post->ID, 'claimed_timestamp', true );
             }
-        } else {
-            error_log("manage_reward_claims: No student_redeems posts found.");
+            if ( $ts && ( $most_recent === null || strtotime($ts) > strtotime($most_recent) ) ) {
+                $most_recent = $ts;
+            }
         }
 
-        $can_redeem = ($redemption_limit == 0 || $claim_count < $redemption_limit);
-        error_log("manage_reward_claims: Final count - claims: {$claim_count}, can_redeem: " . ($can_redeem ? 'true' : 'false'));
+        // 3) Redemption check
+        $can_redeem = ( $redemption_limit === 0 || $count < $redemption_limit );
+
+        error_log( "manage_reward_claims: Student {$student_post_id}, Reward {$reward_item_id} → count={$count}, most_recent={$most_recent}, can_redeem=" . ($can_redeem?'true':'false') );
 
         return [
-            'claim_count' => $claim_count,
-            'most_recent_timestamp' => $most_recent_timestamp,
-            'can_redeem' => $can_redeem,
-            'log_messages' => $log_messages,
+            'claim_count'            => $count,
+            'most_recent_timestamp'  => $most_recent,
+            'can_redeem'             => $can_redeem,
         ];
     }
 endif;
-
-if (!function_exists('update_reward_claims')) :
+if ( ! function_exists( 'update_reward_claims' ) ) :
     /**
-     * Updates the reward claims by adding a new entry to the claimed_history repeater
-     * with the timestamp in the correct nested structure, and sets the status within the statuses repeater.
+     * Create a new Students Redeems CPT entry for each claim.
+     *
+     * @param int    $student_id     Student CPT ID.
+     * @param int    $reward_item_id Reward CPT ID.
+     * @param string $timestamp      MySQL datetime, e.g. '2025-04-17 15:30:59'.
+     * @return bool True on success, false on failure.
      */
-    function update_reward_claims($student_post_id, $reward_item_id, $timestamp) { // Removed $status parameter
-        if (!function_exists('get_field') || !function_exists('update_field')) {
-            error_log('update_reward_claims: ACF functions not available.');
-            return ['success' => false, 'message' => 'ACF functions not available'];
+    function update_reward_claims( $student_id, $reward_item_id, $timestamp ) {
+        // 1) Insert the CPT post
+        $post_id = wp_insert_post( [
+            'post_type'   => 'students_redeems',    // must match your register_post_type slug
+            'post_title'  => sprintf(
+                'Claim: Student %d → Reward %d @ %s',
+                $student_id,
+                $reward_item_id,
+                $timestamp
+            ),
+            'post_status' => 'publish',
+        ] );
+
+        if ( is_wp_error( $post_id ) || ! $post_id ) {
+            error_log( 'update_reward_claims: wp_insert_post failed: '
+                . ( is_wp_error( $post_id )
+                    ? $post_id->get_error_message()
+                    : 'unknown error'
+                )
+            );
+            return false;
         }
 
-        // Get or create students_redeems post
-        $student_redeems_posts = get_posts([
-            'post_type' => 'students_redeems',
-            'numberposts' => 1,
-            'orderby' => 'ID',
-            'order' => 'DESC'
-        ]);
+        // 2) Determine default status
+        $promotion_type = get_field( 'promotion_type', $reward_item_id );
+        $status         = ( $promotion_type === 'reload' ) ? 'pending' : 'completed';
 
-        if (empty($student_redeems_posts)) {
-            $new_post_id = wp_insert_post([
-                'post_type' => 'students_redeems',
-                'post_title' => 'Reward Claims History',
-                'post_status' => 'publish'
-            ]);
-
-            if (!$new_post_id || is_wp_error($new_post_id)) {
-                error_log('update_reward_claims: Failed to create new students_redeems post.');
-                return ['success' => false, 'message' => 'Failed to create history post'];
-            }
-            $student_redeems_post = get_post($new_post_id);
+        // 3) Save all four ACF fields so your admin table can read them
+        if ( function_exists( 'update_field' ) ) {
+            update_field( 'student',           $student_id,     $post_id );
+            update_field( 'reward_item',       $reward_item_id, $post_id );
+            update_field( 'claimed_timestamp', $timestamp,      $post_id );
+            update_field( 'status',            $status,         $post_id );
         } else {
-            $student_redeems_post = $student_redeems_posts[0];
+            // fallback if ACF isn’t loaded yet
+            update_post_meta( $post_id, 'student',           $student_id );
+            update_post_meta( $post_id, 'reward_item',       $reward_item_id );
+            update_post_meta( $post_id, 'claimed_timestamp', $timestamp );
+            update_post_meta( $post_id, 'status',            $status );
         }
 
-        // Get existing claimed_history or initialize
-        $claimed_history = get_field('claimed_history', $student_redeems_post->ID);
-        if (!is_array($claimed_history)) {
-            $claimed_history = [];
-        }
-
-        // Get the promotion type from the reward item
-        $promotion_type = get_field('promotion_type', $reward_item_id);
-        $status = ($promotion_type == 'reload') ? 'pending' : 'completed';
-
-
-        // Find or create the specific claim entry
-        $claim_found = false;
-        foreach ($claimed_history as &$claim) {
-            if (isset($claim['reward_item'][0]) && $claim['reward_item'][0] == $reward_item_id &&
-                isset($claim['student'][0]) && $claim['student'][0] == $student_post_id) {
-
-                // Initialize claimed_timestamps if not exists
-                if (!isset($claim['claimed_timestamps']) || !is_array($claim['claimed_timestamps'])) {
-                    $claim['claimed_timestamps'] = [];
-                }
-
-                // Add new timestamp
-                $claim['claimed_timestamps'][] = ['timestamp' => $timestamp];
-
-                // Initialize statuses if not exists
-                if (!isset($claim['statuses']) || !is_array($claim['statuses'])) {
-                    $claim['statuses'] = [];
-                }
-
-                // Add new status
-                $claim['statuses'][] = ['status' => $status];
-
-                $claim_found = true;
-                break;
-            }
-        }
-
-        // If no existing claim found, create new one
-        if (!$claim_found) {
-            $claimed_history[] = [
-                'reward_item' => [$reward_item_id],
-                'student' => [$student_post_id],
-                'claimed_timestamps' => [
-                    ['timestamp' => $timestamp]
-                ],
-                'statuses' => [
-                    ['status' => $status]
-                ]
-            ];
-        }
-
-        // Update the field - ACF sometimes returns unexpected values
-        $update_result = update_field('claimed_history', $claimed_history, $student_redeems_post->ID);
-
-        // Verify the update actually worked by checking the stored value
-        $updated_history = get_field('claimed_history', $student_redeems_post->ID);
-        $update_verified = false;
-        $outer_loop_broken = false; // Flag to indicate outer loop break
-
-        if (is_array($updated_history)) {
-            foreach ($updated_history as $claim) {
-                if ($outer_loop_broken) {
-                    break; // Break out of the outer loop if needed
-                }
-                if (isset($claim['reward_item'][0]) && $claim['reward_item'][0] == $reward_item_id &&
-                    isset($claim['student'][0]) && $claim['student'][0] == $student_post_id) {
-
-                    $timestamp_verified = false;
-                    if (isset($claim['claimed_timestamps']) && is_array($claim['claimed_timestamps'])) {
-                        foreach ($claim['claimed_timestamps'] as $ts) {
-                            if (isset($ts['timestamp']) && $ts['timestamp'] == $timestamp) {
-                                $timestamp_verified = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    $status_verified = false;
-                    if (isset($claim['statuses']) && is_array($claim['statuses'])) {
-                        foreach ($claim['statuses'] as $s) {
-                            if (isset($s['status']) && $s['status'] == $status) {
-                                $status_verified = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    if ($timestamp_verified && $status_verified) {
-                        $update_verified = true;
-                        $outer_loop_broken = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-
-        if ($update_verified) {
-            error_log("update_reward_claims: Successfully verified update for student {$student_post_id} and reward {$reward_item_id}");
-            return ['success' => true, 'message' => 'Reward claim updated'];
-        } else {
-            error_log("update_reward_claims: Update verification failed for student {$student_post_id} and reward {$reward_item_id}");
-            error_log("update_reward_claims: Update result was: " . print_r($update_result, true));
-            error_log("update_reward_claims: Attempted to store: " . print_r($claimed_history, true));
-            error_log("update_reward_claims: Actually stored: " . print_r($updated_history, true));
-            return ['success' => false, 'message' => 'Failed to verify reward claim update'];
-        }
+        error_log( "update_reward_claims: Created claim post #{$post_id} for student {$student_id}" );
+        return true;
     }
 endif;
+
+//if (!function_exists('update_reward_claims')) :
+//    /**
+//     * Updates the reward claims by adding a new entry to the claimed_history repeater
+//     * with the timestamp in the correct nested structure, and sets the status within the statuses repeater.
+//     */
+//    function update_reward_claims($student_post_id, $reward_item_id, $timestamp) { // Removed $status parameter
+//        if (!function_exists('get_field') || !function_exists('update_field')) {
+//            error_log('update_reward_claims: ACF functions not available.');
+//            return ['success' => false, 'message' => 'ACF functions not available'];
+//        }
+//
+//        // Get or create students_redeems post
+//        $student_redeems_posts = get_posts([
+//            'post_type' => 'students_redeems',
+//            'numberposts' => 1,
+//            'orderby' => 'ID',
+//            'order' => 'DESC'
+//        ]);
+//
+//        if (empty($student_redeems_posts)) {
+//            $new_post_id = wp_insert_post([
+//                'post_type' => 'students_redeems',
+//                'post_title' => 'Reward Claims History',
+//                'post_status' => 'publish'
+//            ]);
+//
+//            if (!$new_post_id || is_wp_error($new_post_id)) {
+//                error_log('update_reward_claims: Failed to create new students_redeems post.');
+//                return ['success' => false, 'message' => 'Failed to create history post'];
+//            }
+//            $student_redeems_post = get_post($new_post_id);
+//        } else {
+//            $student_redeems_post = $student_redeems_posts[0];
+//        }
+//
+//        // Get existing claimed_history or initialize
+//        $claimed_history = get_field('claimed_history', $student_redeems_post->ID);
+//        if (!is_array($claimed_history)) {
+//            $claimed_history = [];
+//        }
+//
+//        // Get the promotion type from the reward item
+//        $promotion_type = get_field('promotion_type', $reward_item_id);
+//        $status = ($promotion_type == 'reload') ? 'pending' : 'completed';
+//
+//
+//        // Find or create the specific claim entry
+//        $claim_found = false;
+//        foreach ($claimed_history as &$claim) {
+//            if (isset($claim['reward_item'][0]) && $claim['reward_item'][0] == $reward_item_id &&
+//                isset($claim['student'][0]) && $claim['student'][0] == $student_post_id) {
+//
+//                // Initialize claimed_timestamps if not exists
+//                if (!isset($claim['claimed_timestamps']) || !is_array($claim['claimed_timestamps'])) {
+//                    $claim['claimed_timestamps'] = [];
+//                }
+//
+//                // Add new timestamp
+//                $claim['claimed_timestamps'][] = ['timestamp' => $timestamp];
+//
+//                // Initialize statuses if not exists
+//                if (!isset($claim['statuses']) || !is_array($claim['statuses'])) {
+//                    $claim['statuses'] = [];
+//                }
+//
+//                // Add new status
+//                $claim['statuses'][] = ['status' => $status];
+//
+//                $claim_found = true;
+//                break;
+//            }
+//        }
+//
+//        // If no existing claim found, create new one
+//        if (!$claim_found) {
+//            $claimed_history[] = [
+//                'reward_item' => [$reward_item_id],
+//                'student' => [$student_post_id],
+//                'claimed_timestamps' => [
+//                    ['timestamp' => $timestamp]
+//                ],
+//                'statuses' => [
+//                    ['status' => $status]
+//                ]
+//            ];
+//        }
+//
+//        // Update the field - ACF sometimes returns unexpected values
+//        $update_result = update_field('claimed_history', $claimed_history, $student_redeems_post->ID);
+//
+//        // Verify the update actually worked by checking the stored value
+//        $updated_history = get_field('claimed_history', $student_redeems_post->ID);
+//        $update_verified = false;
+//        $outer_loop_broken = false; // Flag to indicate outer loop break
+//
+//        if (is_array($updated_history)) {
+//            foreach ($updated_history as $claim) {
+//                if ($outer_loop_broken) {
+//                    break; // Break out of the outer loop if needed
+//                }
+//                if (isset($claim['reward_item'][0]) && $claim['reward_item'][0] == $reward_item_id &&
+//                    isset($claim['student'][0]) && $claim['student'][0] == $student_post_id) {
+//
+//                    $timestamp_verified = false;
+//                    if (isset($claim['claimed_timestamps']) && is_array($claim['claimed_timestamps'])) {
+//                        foreach ($claim['claimed_timestamps'] as $ts) {
+//                            if (isset($ts['timestamp']) && $ts['timestamp'] == $timestamp) {
+//                                $timestamp_verified = true;
+//                                break;
+//                            }
+//                        }
+//                    }
+//
+//                    $status_verified = false;
+//                    if (isset($claim['statuses']) && is_array($claim['statuses'])) {
+//                        foreach ($claim['statuses'] as $s) {
+//                            if (isset($s['status']) && $s['status'] == $status) {
+//                                $status_verified = true;
+//                                break;
+//                            }
+//                        }
+//                    }
+//
+//                    if ($timestamp_verified && $status_verified) {
+//                        $update_verified = true;
+//                        $outer_loop_broken = true;
+//                        break;
+//                    }
+//                }
+//            }
+//        }
+//
+//
+//        if ($update_verified) {
+//            error_log("update_reward_claims: Successfully verified update for student {$student_post_id} and reward {$reward_item_id}");
+//            return ['success' => true, 'message' => 'Reward claim updated'];
+//        } else {
+//            error_log("update_reward_claims: Update verification failed for student {$student_post_id} and reward {$reward_item_id}");
+//            error_log("update_reward_claims: Update result was: " . print_r($update_result, true));
+//            error_log("update_reward_claims: Attempted to store: " . print_r($claimed_history, true));
+//            error_log("update_reward_claims: Actually stored: " . print_r($updated_history, true));
+//            return ['success' => false, 'message' => 'Failed to verify reward claim update'];
+//        }
+//    }
+//endif;
 
 if (!function_exists('confirm_reload_reward')) :
     /**
