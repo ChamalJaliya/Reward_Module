@@ -37,6 +37,8 @@ if ( ! defined( 'WPINC' ) ) {
  * Rename this for your plugin and update it as you release new versions.
  */
 define( 'POINTS_PLUS_VERSION', '1.0.0' );
+// Define plugin file constant for activation hooks
+define( 'POINTSPLUS_PLUGIN_FILE', __FILE__ );
 
 include_once plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-install.php';
 
@@ -185,6 +187,9 @@ function points_plus_register_shortcodes(): void {
  * @since    1.0.0
  */
 
+// Initialize cron system
+require_once plugin_dir_path( __FILE__ ) . 'includes/cron.php';
+\PointsPlus\Cron\init();
 
 function run_points_plus() {
 

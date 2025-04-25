@@ -590,42 +590,6 @@ if (!function_exists('is_student_eligible_for_reward_display')) :
             return false;
         }
 
-        // 5. Check cooldown and redemption limits
-        if ($cooldown_period > 0 || $redemption_limit > 0) {
-            error_log("Checking cooldown and redemption limits...");
-            $claim_data = manage_reward_claims($student_post_id, $reward_id, $redemption_limit);
-            $most_recent_timestamp = $claim_data['most_recent_timestamp'];
-            $claim_count = $claim_data['claim_count'];
-
-            error_log("Last Claimed: " . ($most_recent_timestamp ?: 'Never'));
-            error_log("Total Claims: {$claim_count}" . ($redemption_limit > 0 ? "/{$redemption_limit}" : ''));
-
-            // Check redemption limit first
-            if ($redemption_limit > 0 && $claim_count >= $redemption_limit) {
-                error_log("FAIL: Redemption limit reached");
-                return false;
-            }
-
-            // Then check cooldown period if they've claimed before
-            if ($most_recent_timestamp) {
-                $now = current_time('timestamp');
-                $last_claimed_time = strtotime($most_recent_timestamp);
-                $time_since_last_claim = $now - $last_claimed_time;
-                $cooldown_remaining = $cooldown_period - $time_since_last_claim;
-
-                error_log("Current Time: " . date('Y-m-d H:i:s', $now));
-                error_log("Last Claim Time: " . date('Y-m-d H:i:s', $last_claimed_time));
-                error_log("Time Since Last Claim: {$time_since_last_claim}s");
-                error_log("Cooldown Remaining: {$cooldown_remaining}s");
-
-                if ($cooldown_remaining > 0) {
-                    $readable_time = seconds_to_readable($cooldown_remaining);
-                    error_log("FAIL: Cooldown not expired - {$readable_time} remaining");
-                    return false;
-                }
-            }
-        }
-
         error_log("PASS: Student is eligible for reward");
         return true;
     }
