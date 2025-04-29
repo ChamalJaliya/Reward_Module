@@ -126,3 +126,39 @@ if (!function_exists('mark_notification_read_ajax')) :
         }
     }
 endif;
+
+if (!function_exists('get_student_unread_notification_count')) {
+
+    /**
+     * Gets the count of unread notifications for a student.
+     *
+     * @param int|string $student_id The ID of the student (usually a user ID or post ID).
+     *
+     * @return int The number of unread notifications.
+     */
+    function get_student_unread_notification_count($student_id) {
+        $unread_count = 0;
+
+        // Check if ACF is active and the field exists
+        if (function_exists('get_field')) {
+            $notifications = get_field('student_notifications', $student_id);
+
+            // Check if there are any notifications
+            if ($notifications) {
+                foreach ($notifications as $notification) {
+                    if (!$notification['is_read']) {
+                        $unread_count++;
+                    }
+                }
+            }
+            error_log("get_student_unread_notification_count: Student ID $student_id has $unread_count unread notifications.");
+        } else {
+            // Log an error or handle the case where ACF is not active
+            error_log('ACF is not active. get_student_unread_notification_count() may not function correctly.');
+            // You might want to return 0 or a default value here
+            return 0;
+        }
+
+        return $unread_count;
+    }
+}

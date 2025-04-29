@@ -2,6 +2,7 @@
 /**
  * Reward system functionality
  */
+include_once plugin_dir_path(__FILE__) . 'notification-system.php';
 include_once(plugin_dir_path(__FILE__) . 'manage-messege-helper.php');
 
 // Helper function to get the reward points, coins, cooldown, and other details from a specific "Reward Item" post.
@@ -196,13 +197,19 @@ if (!function_exists('is_student_eligible_for_reward')) :
                 error_log("Last Claim Time: " . date('Y-m-d H:i:s', $last_claimed_time));
                 error_log("Time Since Last Claim: {$time_since_last_claim}s");
                 error_log("Cooldown Remaining: {$cooldown_remaining}s");
+                $cooldown_period_readable = seconds_to_readable_custom($cooldown_period);
+                error_log("Cooldown Period: {$cooldown_period_readable}");
 
                 if ($cooldown_remaining > 0) {
-                    $readable_time = seconds_to_readable($cooldown_remaining);
+                    $readable_time = seconds_to_readable_custom($cooldown_remaining);
                     error_log("FAIL: Cooldown not expired - {$readable_time} remaining");
                     return [
                         'eligible' => false,
-                        'message' => "Cooldown not expired - Time remaining: " . trim($readable_time)
+                        'message' => sprintf(
+                            esc_html( points_plus_translate('Sorry. You have claimed this Reward within the last %s. Please try again in %s.') ),
+                            $cooldown_period_readable,
+                            trim($readable_time)
+                        )
                     ];
 //                    return false;
                 }
@@ -650,34 +657,53 @@ if (!function_exists('seconds_to_readable')) :
         $seconds = $seconds % 60;
 
         $parts = [];
-        if ($days > 0) $parts[] = "{$days} day" . ($days > 1 ? 's' : '');
-        if ($hours > 0) $parts[] = "{$hours} hour" . ($hours > 1 ? 's' : '');
-        if ($minutes > 0) $parts[] = "{$minutes} minute" . ($minutes > 1 ? 's' : '');
+        if ($days > 0) {
+            $parts[] = $days . ' ' . esc_html( points_plus_translate( 'day' . ($days > 1 ? 's' : '') ) );
+        }
+        if ($hours > 0) {
+            $parts[] = $hours . ' ' . esc_html( points_plus_translate( 'hour' . ($hours > 1 ? 's' : '') ) );
+        }
+        if ($minutes > 0) {
+            $parts[] = $minutes . ' ' . esc_html( points_plus_translate( 'minute' . ($minutes > 1 ? 's' : '') ) );
+        }
         if ($seconds > 0 && empty($parts)) {
-            $parts[] = "{$seconds} second" . ($seconds > 1 ? 's' : '');
+            $parts[] = $seconds . ' ' . esc_html( points_plus_translate( 'second' . ($seconds > 1 ? 's' : '') ) );
         }
 
         return implode(' ', $parts);
     }
 endif;
-function test_language_output() {
-    $amount = 100;
 
-    // Define custom translations manually
-    $translations = [
-        'en' => 'Your redeem reward request for %s',
-        'si_LK' => 'සඳහා %s ඔබගේ මුදවා ගැනීමේ ඉල්ලීම ඉදිරිපත් කර ඇත. එය වැඩ කරන දින 2-3ක් ඇතුළත සකස් කරනු ලැබේ.',
-    ];
+if (!function_exists('seconds_to_readable_custom')) :
+    function seconds_to_readable_custom($seconds) {
+        $days = floor($seconds / 86400);
+        $hours = floor(($seconds % 86400) / 3600);
+        $minutes = floor(($seconds % 3600) / 60);
+        $seconds = $seconds % 60;
 
-    // Assume you detect user language somehow
-    $current_lang = 'si_LK'; // force Sinhala for testing
+        $parts = [];
+        if ($days > 0) {
+            $label = esc_html(points_plus_translate('day' . ($days > 1 ? 's' : '')));
+            $parts[] = ($days > 1 ? "{$label} {$days}" : $label);
+        }
+        if ($hours > 0) {
+            $label = esc_html(points_plus_translate('hour' . ($hours > 1 ? 's' : '')));
+            $parts[] = ($hours > 1 ? "{$label} {$hours}" : $label);
+        }
+        if ($minutes > 0) {
+            $label = esc_html(points_plus_translate('minute' . ($minutes > 1 ? 's' : '')));
+            $parts[] = ($minutes > 1 ? "{$label} {$minutes}" : $label);
+        }
+        if ($seconds > 0 && empty($parts)) {
+            $label = esc_html(points_plus_translate('second' . ($seconds > 1 ? 's' : '')));
+            $parts[] = ($seconds > 1 ? "{$label} {$seconds}" : $label);
+        }
 
-    // Pick correct translation
-    $text = isset($translations[$current_lang]) ? $translations[$current_lang] : $translations['en'];
+        return implode(' ', $parts);
+    }
 
-    echo sprintf($text, $amount);
-}
-add_shortcode('test_lang', 'test_language_output');
+endif;
+
 
 // AJAX handler for redeeming rewards
 add_action('wp_ajax_redeem_reward', 'handle_redeem_reward_ajax');
@@ -801,7 +827,7 @@ if (!function_exists('handle_redeem_reward_ajax')) :
                     }
 
                     $error_message = sprintf(
-                        __('You can claim this reward again in %s.', 'your-theme-text-domain'),
+                        esc_html( points_plus_translate('You can claim this reward again in %s.') ),
                         $remaining_time
                     );
                 } elseif (strpos($error_message, 'Student is explicitly excluded') !== false) {
@@ -848,7 +874,7 @@ if (!function_exists('handle_redeem_reward_ajax')) :
                     $response = add_system_message(
                         $response,
                         sprintf(
-                            __('You need %d more coins to redeem this reward (you have %d).', 'your-theme-text-domain'),
+                            esc_html( points_plus_translate('You need %d more coins to redeem this reward (you have %d).') ),
                             $reward_data['required_coins'] - $current_coins,
                             $current_coins
                         ),
@@ -869,9 +895,9 @@ if (!function_exists('handle_redeem_reward_ajax')) :
                         'success' => true,
                         'needs_confirmation' => true,
                         'message' => sprintf(
-                            __('We will send ₹%d reload to %s. Confirm to proceed?', 'your-theme-text-domain'),
-                            $reward_data['reload_value'],
-                            $phone_number
+                            esc_html( points_plus_translate('%d coins will be deducted from your account and a reload of Rs. %s will be credited to your phone number below within the next 2 – 3 working days.') ),
+                            $reward_data['required_coins'],
+                            $reward_data['reload_value']
                         ),
                         'confirmation_data' => [
                             'phone_number' => $phone_number,
@@ -906,7 +932,7 @@ if (!function_exists('handle_redeem_reward_ajax')) :
             switch ($reward_data['promotion_type']) {
                 case 'reload':
                     $success_message = sprintf(
-                        __('₹%d reload to %s has been processed! It may take 2-3 business days to complete.', 'twentytwentyfive'),
+                        esc_html( points_plus_translate('₹%d reload to %s has been processed! It may take 2-3 business days to complete.') ),
                         $reward_data['reload_value'],
                         $phone_number
                     );

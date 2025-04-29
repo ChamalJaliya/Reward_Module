@@ -71,6 +71,53 @@ function deactivate_points_plus(): void {
 register_activation_hook( __FILE__, 'activate_points_plus' );
 register_deactivation_hook( __FILE__, 'deactivate_points_plus' );
 
+// Define the path to the translations file
+define( 'POINTS_PLUS_TRANSLATIONS_PATH', plugin_dir_path( __FILE__ ) . 'languages/translations.json' );
+
+// Global variable to store the loaded translations
+global $points_plus_translations;
+$points_plus_translations = null;
+
+/**
+ * Loads the plugin's translations from the JSON file.
+ */
+function points_plus_load_translations() {
+    global $points_plus_translations;
+
+    if ( $points_plus_translations === null ) {
+        $translations_json = file_get_contents( POINTS_PLUS_TRANSLATIONS_PATH );
+        $points_plus_translations = json_decode( $translations_json, true );
+
+        if ( $points_plus_translations === null && json_last_error() !== JSON_ERROR_NONE ) {
+            error_log( 'Error decoding translations.json: ' . json_last_error_msg() );
+            $points_plus_translations = array(); // Fallback to empty
+        }
+    }
+}
+add_action( 'plugins_loaded', 'points_plus_load_translations' );
+
+/**
+ * Translation function for the plugin.
+ *
+ * @param string $text   The original text to translate.
+ * @param string $locale Optional. The locale to translate to. Defaults to 'si_LK'.
+ * @return string The translated text, or the original text if no translation is found.
+ */
+function points_plus_translate( $text, $locale = 'si_LK' ) {
+    global $points_plus_translations;
+
+    if ( $points_plus_translations === null ) {
+        points_plus_load_translations(); // Ensure translations are loaded
+    }
+
+    if ( isset( $points_plus_translations[ $locale ] ) && isset( $points_plus_translations[ $locale ][ $text ] ) ) {
+        return $points_plus_translations[ $locale ][ $text ];
+    }
+
+    // Fallback to the original text
+    return $text;
+}
+
 /**
  * The core plugin class that is used to define internationalization,
  * admin-specific hooks, and public-facing site hooks.
@@ -80,9 +127,8 @@ require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-api.php'; // I
 require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-rule-engine.php'; // Include Rule Engine
 require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-execution.php'; // Include Reward Execution
 require_once plugin_dir_path(__FILE__) . 'includes/student-profile.php';
-
-require_once plugin_dir_path(__FILE__) . 'includes/reward-system.php';
 require_once plugin_dir_path(__FILE__) . 'includes/notification-system.php';
+require_once plugin_dir_path(__FILE__) . 'includes/reward-system.php';
 require_once plugin_dir_path(__FILE__) . 'includes/enqueue-scripts.php';
 
 /**
@@ -181,8 +227,6 @@ function points_plus_register_shortcodes(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/students.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/promotions-list.php';
 }
-
-
 /**
  * Begins execution of the plugin.
  *
