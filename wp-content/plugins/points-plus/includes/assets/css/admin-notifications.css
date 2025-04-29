@@ -1,0 +1,51 @@
+/*--- Bell + Badge you already had ---*/
+.pp-bell-icon:before {
+  content: "\f488";
+  font-family: Dashicons;
+  font-size: 18px;
+  vertical-align: middle;
+}
+.pp-count-badge {
+  background: #d63638;
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 10px;
+  line-height: 1;
+  padding: 2px 5px;
+  position: absolute;
+  top: 3px;
+  right: 3px;
+}
+
+/*--- The dropdown ---*/
+.pp-dropdown {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: 5px 0;
+  background: #fff;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  position: absolute;
+  right: 0;
+  top: 100%; /* sit just below the icon */
+  width: 300px;
+  z-index: 9999;
+}
+.pp-dropdown li {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+}
+.pp-dropdown li:last-child {
+  border-bottom: none;
+}
+.pp-dropdown .empty {
+  text-align: center;
+  color: #666;
+}
+
+#wp-admin-bar-pp-pending-redemptions {
+  position: relative;
+}

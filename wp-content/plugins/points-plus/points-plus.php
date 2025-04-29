@@ -179,6 +179,9 @@ function points_plus_register_admin_tables(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/student-quests-table.php';
     require_once plugin_dir_path(__FILE__) . 'includes/hooks/student-redeems-title.php';
     require_once plugin_dir_path(__FILE__) . 'includes/admin/students-redeems-export-handler.php';
+    require_once plugin_dir_path(__FILE__) . 'includes/admin/admin-notifications.php';
+    // require_once plugin_dir_path(__FILE__) . 'includes/admin/admin-notifications/class-admin-notifications.php';
+    // require_once plugin_dir_path(__FILE__) . 'includes/admin/admin-notifications/ajax-handlers.php';
 }
 
 add_action( 'init', 'points_plus_register_shortcodes' );
@@ -191,6 +194,27 @@ function points_plus_register_shortcodes(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/rules.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/students.php';
 }
+
+// add_action('admin_enqueue_scripts', function(){
+//     // CSS
+//     wp_enqueue_style(
+//         'pp-admin-notifications',
+//         plugin_dir_url(__FILE__) . 'includes/assets/css/admin-notifications.css',
+//         [], '1.0'
+//     );
+//     // JS + localized vars
+//     wp_enqueue_script(
+//         'pp-admin-notifications',
+//         plugin_dir_url(__FILE__) . 'includes/assets/js/admin-notifications.js',
+//         ['jquery'], '1.0', true
+//     );
+//     wp_localize_script('pp-admin-notifications','PP_Notifications',[
+//         'ajax_url' => admin_url('admin-ajax.php'),
+//         'nonce'    => wp_create_nonce('pending_redemptions_nonce'),
+//     ]);
+// });
+
+// \Admin\Notifications\Admin_Notifications::init();
 
 
 /**
