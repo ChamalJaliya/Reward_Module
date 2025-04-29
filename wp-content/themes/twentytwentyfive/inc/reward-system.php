@@ -2,6 +2,7 @@
 /**
  * Reward system functionality
  */
+include_once(get_template_directory() . '/inc/manage-messege-helper.php');
 
 // Helper function to get the reward points, coins, cooldown, and other details from a specific "Reward Item" post.
 if (!function_exists('get_reward_data')) :
@@ -146,13 +147,15 @@ if (!function_exists('is_student_eligible_for_reward')) :
         if (!empty($eligibility_rules)) {
             error_log("Checking eligibility rules...");
             $passed_all_rules = true;
+            $rule_failure_message = '';  // Store the detailed message
 
             foreach ($eligibility_rules as $rule_id) {
-                $rule_passed = evaluate_eligibility_rule($student_post_id, $rule_id ,$valid_from);
+                $rule_passed = evaluate_eligibility_rule($student_post_id, $rule_id, $valid_from);
 
-                if (!$rule_passed) {
+                if (!$rule_passed['passed']) {
                     error_log("FAIL: Student failed rule ID {$rule_id}");
                     $passed_all_rules = false;
+                    $rule_failure_message = $rule_passed['message']; // Store the message
                     break;
                 }
 
@@ -160,8 +163,8 @@ if (!function_exists('is_student_eligible_for_reward')) :
             }
 
             if (!$passed_all_rules) {
-                error_log("FAIL: Student failed one or more eligibility rules");
-                return false;
+                error_log("FAIL: $rule_failure_message");
+                return ['eligible' => false, 'message' => "Student failed one or more eligibility rules"]; // Return the detailed message
             }
         }
 
@@ -216,12 +219,12 @@ if (!function_exists('evaluate_eligibility_rule')) :
     /**
      * Evaluates a single eligibility rule against a student
      *
-     * @param int $student_post_id
-     * @param int $rule_id
+     * @param int    $student_post_id
+     * @param int    $rule_id
      * @param string $valid_from  The valid_from date for the reward (used for next_x_units)
-     * @return bool
+     * @return array  // Changed return type to array
      */
-    function evaluate_eligibility_rule($student_post_id, $rule_id,$valid_from) {
+    function evaluate_eligibility_rule($student_post_id, $rule_id, $valid_from) {
         error_log("=== STARTING RULE EVALUATION ===");
         error_log("Evaluating rule ID: {$rule_id} for student {$student_post_id}");
         error_log("Reward start date: {$valid_from} for reward");
@@ -231,25 +234,27 @@ if (!function_exists('evaluate_eligibility_rule')) :
         error_log("Rule Post Data: " . print_r($rule_data, true)); // Log the entire post object
         if (!$rule_data) {
             error_log("ERROR: Rule with ID {$rule_id} not found.");
-            return false;
+            return ['passed' => false, 'message' => 'Eligibility rule not found.']; // More specific
         }
+
         // Get rule status first
         $rule_status = get_field('status', $rule_id);
         if ($rule_status !== 'active') {
             error_log("FAIL: Rule {$rule_id} is not active (status: {$rule_status})");
-            return false;
+            return ['passed' => false, 'message' => 'Eligibility rule is inactive.']; // More specific
         }
 
         $conditions = get_field('conditions', $rule_id);
         if (empty($conditions)) {
             error_log("PASS: Rule {$rule_id} has no conditions - automatically passes");
-            return true;
+            return ['passed' => true];
         }
 
         // Track results for all groups
         $group_results = [];
         $has_or_groups = false;
         $has_passing_or_group = false;
+        $overall_passed = true; // Track if the rule overall passes
 
         foreach ($conditions as $group_index => $condition_group) {
             $group_logic = isset($condition_group['group_logic']) ?
@@ -269,13 +274,16 @@ if (!function_exists('evaluate_eligibility_rule')) :
             $condition_items = isset($condition_group['condition_items']) ?
                 $condition_group['condition_items'] : [];
 
-            $group_result = ($group_logic === 'OR') ? false : true;
+            $group_passed = ($group_logic === 'OR') ? false : true;
+            $group_fail_message = ''; // Store the message for the first failing condition
 
             foreach ($condition_items as $item_index => $condition) {
                 if (!is_array($condition) || !isset($condition['field']) || !isset($condition['operator']) || !isset($condition['value'])) {
                     error_log("Invalid condition structure in group {$group_index}, item {$item_index}");
-                    $group_result = ($group_logic === 'OR') ? $group_result : false;
-                    continue;
+                    $group_passed = ($group_logic === 'OR') ? $group_passed : false;
+                    $overall_passed = false; // Rule fails if any condition is invalid
+                    $group_fail_message = 'Invalid condition structure.';
+                    break; // Stop checking conditions in this group
                 }
 
                 $field = $condition['field'];
@@ -303,60 +311,63 @@ if (!function_exists('evaluate_eligibility_rule')) :
 
                 // Apply group logic
                 if ($group_logic === 'AND') {
-                    $group_result = $group_result && $comparison_result;
-                    if (!$group_result) {
+                    $group_passed = $group_passed && $comparison_result;
+                    if (!$group_passed) {
                         error_log("AND group condition failed - short-circuiting this group");
+                        $overall_passed = false;
+                        $group_fail_message = "Condition '{$field} {$operator} {$value}' failed.";
                         break; // No need to check other conditions in this AND group
                     }
                 } else { // OR logic
-                    $group_result = $group_result || $comparison_result;
-                    if ($group_result) {
+                    $group_passed = $group_passed || $comparison_result;
+                    if ($group_passed) {
                         error_log("OR group condition passed - short-circuiting this group");
                         break; // No need to check other conditions in this OR group
                     }
                 }
             }
 
-            $group_result_text = $group_result ? 'PASS' : 'FAIL';
+            $group_result_text = $group_passed ? 'PASS' : 'FAIL';
             error_log("Group {$group_index} result: {$group_result_text}");
 
             $group_results[] = [
                 'logic' => $group_logic,
-                'result' => $group_result
+                'result' => $group_passed,
+                'message' => $group_fail_message // Store the message
             ];
 
             // Track if we have any passing OR groups
-            if ($group_logic === 'OR' && $group_result) {
+            if ($group_logic === 'OR' && $group_passed) {
                 $has_passing_or_group = true;
+            }
+
+            if (!$group_passed) {
+                $overall_passed = false;
             }
         }
 
         // Determine final rule result
+        $final_result = false;
+        $final_message = "Unknown reason";
+
         if ($has_or_groups) {
             // For rules with OR groups, we need at least one OR group to pass
             $final_result = $has_passing_or_group;
-            error_log($has_passing_or_group ?
+            $final_message = $has_passing_or_group ?
                 "PASS: At least one OR group passed" :
-                "FAIL: No OR groups passed");
+                "FAIL: No OR groups passed";
+            error_log($final_message);
         } else {
             // For rules with only AND groups, all must pass
-            $all_and_groups_passed = true;
-            foreach ($group_results as $group) {
-                if (!$group['result']) {
-                    $all_and_groups_passed = false;
-                    break;
-                }
-            }
-
-            $final_result = $all_and_groups_passed;
-            error_log($all_and_groups_passed ?
+            $final_result = $overall_passed;
+            $final_message = $overall_passed ?
                 "PASS: All AND groups passed" :
-                "FAIL: At least one AND group failed");
+                "FAIL: At least one AND group failed. " . ($group_fail_message ?: 'Unknown condition failed');
+            error_log($final_message);
         }
-
         error_log("Final rule evaluation: " . ($final_result ? 'PASS' : 'FAIL'));
         error_log("=== END RULE EVALUATION ===");
-        return $final_result;
+        return ['passed' => $final_result, 'message' => $final_message]; // Return the result array
     }
 endif;
 
@@ -649,6 +660,24 @@ if (!function_exists('seconds_to_readable')) :
         return implode(' ', $parts);
     }
 endif;
+function test_language_output() {
+    $amount = 100;
+
+    // Define custom translations manually
+    $translations = [
+        'en' => 'Your redeem reward request for %s',
+        'si_LK' => 'සඳහා %s ඔබගේ මුදවා ගැනීමේ ඉල්ලීම ඉදිරිපත් කර ඇත. එය වැඩ කරන දින 2-3ක් ඇතුළත සකස් කරනු ලැබේ.',
+    ];
+
+    // Assume you detect user language somehow
+    $current_lang = 'si_LK'; // force Sinhala for testing
+
+    // Pick correct translation
+    $text = isset($translations[$current_lang]) ? $translations[$current_lang] : $translations['en'];
+
+    echo sprintf($text, $amount);
+}
+add_shortcode('test_lang', 'test_language_output');
 
 // AJAX handler for redeeming rewards
 add_action('wp_ajax_redeem_reward', 'handle_redeem_reward_ajax');
@@ -657,9 +686,10 @@ add_action('wp_ajax_nopriv_redeem_reward', 'handle_redeem_reward_ajax');
 if (!function_exists('handle_redeem_reward_ajax')) :
     function handle_redeem_reward_ajax() {
         // Initialize response array
+
         $response = [
             'success' => false,
-            'message' => '',
+            'messages' => [],
             'data' => [],
             'needs_confirmation' => false
         ];
@@ -668,32 +698,73 @@ if (!function_exists('handle_redeem_reward_ajax')) :
             // 1. Security check (uncomment when ready)
             /*
             if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'redeem_reward_nonce')) {
-                throw new Exception('Security check failed!');
+                throw new Exception(__('Security check failed!', 'your-theme-text-domain'));
             }
             */
 
             // 2. Validate student identifier
             $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : '';
             if (empty($student_identifier)) {
-                throw new Exception('Student email address is required.');
+                $response = add_system_message(
+                    $response,
+                    __('Student email address is required.', 'your-theme-text-domain'),
+                    'error',
+                    'MISSING_EMAIL'
+                );
+                throw new Exception(__('Student email address is required.', 'your-theme-text-domain'));
             }
 
             // 3. Find student post ID
             $student_post_id = get_student_post_id_by_email($student_identifier);
             if (!$student_post_id) {
-                throw new Exception('Could not find student profile.');
+                $response = add_system_message(
+                    $response,
+                    __('Your student profile could not be found. Please contact support.', 'your-theme-text-domain'),
+                    'error',
+                    'STUDENT_NOT_FOUND'
+                );
+                throw new Exception(__('Could not find student profile.', 'your-theme-text-domain'));
             }
 
             // 4. Validate reward ID
             $reward_id = isset($_POST['reward_id']) ? intval($_POST['reward_id']) : 0;
             if (!$reward_id) {
-                throw new Exception('Invalid reward ID.');
+                $response = add_system_message(
+                    $response,
+                    __('Invalid reward selected. Please refresh the page and try again.', 'your-theme-text-domain'),
+                    'error',
+                    'INVALID_REWARD'
+                );
+                throw new Exception(__('Invalid reward ID.', 'your-theme-text-domain'));
             }
 
             // 5. Get reward data
             $reward_data = get_reward_data($reward_id);
             if (!$reward_data['success']) {
-                throw new Exception($reward_data['message'] ?? 'This reward is not available.');
+                $error_msg = $reward_data['message'] ?? __('This reward is not currently available.', 'your-theme-text-domain');
+
+                // Special handling for date-related messages
+                if (strpos($error_msg, 'not yet available') !== false) {
+                    $valid_from = isset($reward_data['valid_from']) ? date('F j, Y', strtotime($reward_data['valid_from'])) : __('a future date', 'your-theme-text-domain');
+                    $error_msg = sprintf(
+                        __('This reward will be available starting %s.', 'your-theme-text-domain'),
+                        $valid_from
+                    );
+                } elseif (strpos($error_msg, 'has expired') !== false) {
+                    $valid_until = isset($reward_data['valid_until']) ? date('F j, Y', strtotime($reward_data['valid_until'])) : __('the past', 'your-theme-text-domain');
+                    $error_msg = sprintf(
+                        __('This reward expired on %s and is no longer available.', 'your-theme-text-domain'),
+                        $valid_until
+                    );
+                }
+
+                $response = add_system_message(
+                    $response,
+                    $error_msg,
+                    'error',
+                    'REWARD_UNAVAILABLE'
+                );
+                throw new Exception($error_msg);
             }
 
             // 6. Check eligibility
@@ -704,49 +775,93 @@ if (!function_exists('handle_redeem_reward_ajax')) :
                 $reward_data['redemption_limit']
             );
 
-            if (!$eligibility['eligible']) {
-                wp_send_json_error([
-                    'success' => false,
-                    'message' => $eligibility['message']
-                ]);
+            // Crucial: Check if $eligibility is an array and has the 'eligible' key
+            if (!is_array($eligibility) || !isset($eligibility['eligible']) || !$eligibility['eligible']) {
+                $error_code = 'ELIGIBILITY_CHECK_FAILED';
+                $error_message = (is_array($eligibility) && isset($eligibility['message']))
+                    ? $eligibility['message']
+                    : __('You are not eligible to claim this reward at this time.', 'your-theme-text-domain');
+
+                // Map specific error cases to better messages
+                if (strpos($error_message, 'Redemption limit reached') !== false) {
+                    $error_code = 'REDEMPTION_LIMIT';
+                    $error_message = sprintf(
+                        __('You have already claimed this reward the maximum %d time(s).', 'your-theme-text-domain'),
+                        $reward_data['redemption_limit']
+                    );
+                } elseif (strpos($error_message, 'Cooldown not expired') !== false) {
+                    $error_code = 'COOLDOWN_ACTIVE';
+                    // Use explode to split the string
+                    $parts = explode('Cooldown not expired - Time remaining: ', $error_message);
+                    // Check if explode was successful and we have a second part
+                    if (isset($parts[1])) {
+                        $remaining_time = trim($parts[1]); // Extract and trim the time
+                    } else {
+                        $remaining_time = ''; // Or some default value or error handling
+                    }
+
+                    $error_message = sprintf(
+                        __('You can claim this reward again in %s.', 'your-theme-text-domain'),
+                        $remaining_time
+                    );
+                } elseif (strpos($error_message, 'Student is explicitly excluded') !== false) {
+                    $error_code = 'EXCLUDED_STUDENT';
+                    $error_message = __('This reward is not available for your account.', 'your-theme-text-domain');
+                } elseif (strpos($error_message, 'Student is not in the include list') !== false) {
+                    $error_code = 'NOT_IN_INCLUDE_LIST';
+                    $error_message = __('This reward is only available to selected students.', 'your-theme-text-domain');
+                } elseif (strpos($error_message, 'failed one or more eligibility rules') !== false) {
+                    $error_code = 'ELIGIBILITY_RULES_FAILED';
+                    $error_message = __('Please complete remaining required quests for claim this reward', 'your-theme-text-domain');
+                }
+
+                $response = add_system_message(
+                    $response,
+                    $error_message,
+                    'error',
+                    $error_code
+                );
+                wp_send_json_error($response);
                 wp_die();
             }
-//            $is_eligible = is_student_eligible_for_reward(
-//                $student_post_id,
-//                $reward_data['cooldown_period'],
-//                $reward_id,
-//                $reward_data['redemption_limit']
-//            );
-//
-//            if (!$is_eligible) {
-//                $response['message'] = 'Not eligible to claim this reward at this time.';
-//                wp_send_json_error($response);
-//                wp_die();
-//            }
 
             // 7. Special handling for reload rewards requiring confirmation
             if ($reward_data['promotion_type'] === 'reload') {
-                error_log("handle_redeem_reward_ajax: Processing reload reward.");
+                error_log(__('handle_redeem_reward_ajax: Processing reload reward.', 'your-theme-text-domain'));
                 $phone_number = get_field('mobile_number', $student_post_id);
-                error_log("handle_redeem_reward_ajax: Phone Number: " . print_r($phone_number, true));
+                error_log(__('handle_redeem_reward_ajax: Phone Number:', 'your-theme-text-domain') . " " . print_r($phone_number, true));
                 $current_coins = get_field('coins', $student_post_id) ?: 0;
-                error_log("handle_redeem_reward_ajax: Current Coins: " . print_r($current_coins, true));
+                error_log(__('handle_redeem_reward_ajax: Current Coins:', 'your-theme-text-domain') . " " . print_r($current_coins, true));
 
                 if (empty($phone_number)) {
-                    error_log("handle_redeem_reward_ajax: Phone number is empty!");
-                    throw new Exception('No mobile number found in your profile.');
+                    $response = add_system_message(
+                        $response,
+                        __('No mobile number found in your profile. Please update your profile to redeem mobile reloads.', 'your-theme-text-domain'),
+                        'error',
+                        'MISSING_PHONE'
+                    );
+                    throw new Exception(__('No mobile number found in profile.', 'your-theme-text-domain'));
                 }
 
                 if ($current_coins < $reward_data['required_coins']) {
-                    error_log("handle_redeem_reward_ajax: Insufficient coins!");
-                    throw new Exception('You don\'t have enough coins for this reward.');
+                    error_log(__('handle_redeem_reward_ajax: Insufficient coins!', 'your-theme-text-domain'));
+                    $response = add_system_message(
+                        $response,
+                        sprintf(
+                            __('You need %d more coins to redeem this reward (you have %d).', 'your-theme-text-domain'),
+                            $reward_data['required_coins'] - $current_coins,
+                            $current_coins
+                        ),
+                        'error',
+                        'INSUFFICIENT_COINS'
+                    );
+                    throw new Exception(__('Insufficient coins for reload reward.', 'your-theme-text-domain'));
                 }
 
-                error_log("handle_redeem_reward_ajax: Confirmation checks passed.");
+                error_log(__('handle_redeem_reward_ajax: Confirmation checks passed.', 'your-theme-text-domain'));
 
                 $is_confirmed = isset($_POST['confirmed']) && $_POST['confirmed'] === 'true';
-                error_log("handle_redeem_reward_ajax: Confirmation status: " . ($is_confirmed ? 'confirmed' : 'needs confirmation'));
-
+                error_log(__('handle_redeem_reward_ajax: Confirmation status:', 'your-theme-text-domain') . " " . ($is_confirmed ? 'confirmed' : 'needs confirmation'));
 
                 // If not yet confirmed, return confirmation request
                 if (!$is_confirmed) {
@@ -754,7 +869,7 @@ if (!function_exists('handle_redeem_reward_ajax')) :
                         'success' => true,
                         'needs_confirmation' => true,
                         'message' => sprintf(
-                            'We will send ₹%d reload to %s. Confirm to proceed?',
+                            __('We will send ₹%d reload to %s. Confirm to proceed?', 'your-theme-text-domain'),
                             $reward_data['reload_value'],
                             $phone_number
                         ),
@@ -775,13 +890,55 @@ if (!function_exists('handle_redeem_reward_ajax')) :
             $reward_granted_data = grant_reward($student_post_id, $reward_data, $reward_id);
 
             if (!$reward_granted_data['success']) {
-                throw new Exception($reward_granted_data['message'] ?? 'Failed to process reward.');
+                $response = add_system_message(
+                    $response,
+                    $reward_granted_data['message'] ?? __('Failed to process reward. Please try again.', 'your-theme-text-domain'),
+                    'error',
+                    'REWARD_PROCESSING_FAILED'
+                );
+                throw new Exception($reward_granted_data['message'] ?? __('Failed to process reward.', 'your-theme-text-domain'));
             }
 
             // 9. Success response
+            $success_message = __('Reward claimed successfully!', 'your-theme-text-domain');
+
+            // Custom success messages based on reward type
+            switch ($reward_data['promotion_type']) {
+                case 'reload':
+                    $success_message = sprintf(
+                        __('₹%d reload to %s has been processed! It may take 2-3 business days to complete.', 'twentytwentyfive'),
+                        $reward_data['reload_value'],
+                        $phone_number
+                    );
+                    break;
+
+                case 'multiplication':
+                    $success_message = sprintf(
+                        __('You earned %d points and %d coins from %d quests!', 'your-theme-text-domain'),
+                        $reward_granted_data['points_added'] ?? 0,
+                        $reward_granted_data['coins_added'] ?? 0,
+                        $reward_granted_data['quests_count'] ?? 0
+                    );
+                    break;
+
+                case 'addition':
+                    $success_message = sprintf(
+                        __('You earned %d points and %d coins!', 'your-theme-text-domain'),
+                        $reward_granted_data['points'] ?? 0,
+                        $reward_granted_data['coins'] ?? 0
+                    );
+                    break;
+            }
+
             $response = [
                 'success' => true,
-                'message' => $reward_granted_data['message'] ?? 'Reward claimed successfully!',
+                'messages' => [
+                    [
+                        'text' => $success_message,
+                        'type' => 'success',
+                        'code' => 'REWARD_CLAIMED'
+                    ]
+                ],
                 'data' => [
                     'points' => $reward_granted_data['points'] ?? 0,
                     'coins' => $reward_granted_data['coins'] ?? 0,
@@ -794,9 +951,17 @@ if (!function_exists('handle_redeem_reward_ajax')) :
             wp_die();
 
         } catch (Exception $e) {
-            $response['message'] = $e->getMessage();
+            if (empty($response['messages'])) {
+                $response = add_system_message(
+                    $response,
+                    $e->getMessage(),
+                    'error',
+                    'UNKNOWN_ERROR'
+                );
+            }
             wp_send_json_error($response);
             wp_die();
+
         }
     }
 endif;
@@ -1161,8 +1326,7 @@ if (!function_exists('grant_reward')) :
 
         // Add notification
         $notification_message = sprintf(
-            __('Your redeem reward request for ₹%d worth of reload is submitted. It will be processed within 2-3 working days.',
-                'your-theme-text-domain'),
+            __('Your redeem reward request for ₹%d worth of reload is submitted. It will be processed within 2-3 working days.', 'twentytwentyfive'),
             $reward_data['reload_value']
         );
         add_notification_to_student_cpt($student_post_id, $notification_message);
@@ -1257,7 +1421,7 @@ if (!function_exists('add_notification_to_student_cpt')) :
 
         // Add the new notification as an array matching sub-field keys
         $notifications[] = [
-            'message' => $message,
+            'message' => __($message, 'twentytwentyfive'),
             'is_read' => false, // Or 0, depending on ACF True/False return format
             'timestamp' => current_time('mysql'),
             // 'link' => '', // Optional: Add a link if needed

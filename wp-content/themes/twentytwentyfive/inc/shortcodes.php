@@ -595,4 +595,243 @@ if (!function_exists('is_student_eligible_for_reward_display')) :
     }
 endif;
 
+/**
+ * Shortcode to display eligible promotion list on promotions page
+ */
+add_shortcode('promotions_list', 'promotions_page_shortcode_function');
 
+
+if (!function_exists('promotions_page_shortcode_function')) :
+    function promotions_page_shortcode_function() {
+        $target_email = 'cjaliya.sln2@gmail.com'; // IMPORTANT:  Dynamically get logged-in user's email
+        $student_post_id = 0;
+
+        try {
+            $student_post_id = get_student_post_id_by_email($target_email); // Use the helper function
+            if (!$student_post_id) {
+                return '<p>Error: Could not find student data.</p>';
+            }
+            $student_post = get_post($student_post_id);
+            if (!$student_post) {
+                return '<p>Error: Could not retrieve student data.</p>';
+            }
+
+        } catch (Exception $e) {
+            return '<p>Error: ' . $e->getMessage() . '</p>';
+        }
+
+        $output = '<div class="promotions-page">';
+        $points = get_field('points', $student_post_id) ?: 0;
+        $coins = get_field('coins', $student_post_id) ?: 0;
+
+        $now = current_time('Y-m-d H:i:s');
+
+        $reward_items = get_posts(array(
+            'post_type' => 'reward-item',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                'relation' => 'AND',
+                array(
+                    'key' => 'status',
+                    'value' => 1, // Assuming 1 is "Active"
+                    'compare' => '=',
+                ),
+                array(
+                    'key' => 'valid_from',
+                    'value' => $now,
+                    'compare' => '<=',
+                    'type' => 'DATETIME'
+                ),
+                array(
+                    'key' => 'valid_until',
+                    'value' => $now,
+                    'compare' => '>=',
+                    'type' => 'DATETIME'
+                )
+            )
+        ));
+
+        if ($reward_items) {
+            $output .= '<div class="promotions-grid">';
+            foreach ($reward_items as $post) {
+                $promotion_id = $post->ID;
+                $promotion_name = get_the_title($promotion_id);
+                $required_coins = get_field('required_coins', $post->ID) ?: 0;
+                $min_quests = get_field('minimum_quests_completed', $post->ID) ?: 0;
+                $valid_from = get_field('valid_from', $post->ID);
+                $valid_until = get_field('valid_until', $post->ID);
+
+                $is_eligible = true;
+                $eligibility_reasons = [];
+
+                // 1. Check Exclude Students FIRST
+                $exclude_students = get_field('exclude_students', $promotion_id);
+                if ($exclude_students && in_array($student_post_id, $exclude_students)) {
+                    $is_eligible = false;
+                    $eligibility_reasons[] = "Student excluded from reward.";
+                } else {
+                    $eligibility_reasons[] = "Student not excluded.";
+                }
+
+                // 2. Then check Include Students
+                if ($is_eligible) {
+                    $include_students = get_field('include_students', $promotion_id);
+                    if ($include_students && !in_array($student_post_id, $include_students)) {
+                        $is_eligible = false;
+                        $eligibility_reasons[] = "Student not in included students.";
+                    } else {
+                        $eligibility_reasons[] = "Student in included students (or no inclusion list).";
+                    }
+                }
+
+                // 3. Check Date Range
+                if ($is_eligible) {
+                    if ($valid_from && strtotime($now) < strtotime($valid_from)) {
+                        $is_eligible = false;
+                        $eligibility_reasons[] = "Reward not yet valid.";
+                    } else if ($valid_until && strtotime($now) > strtotime($valid_until)) {
+                        $is_eligible = false;
+                        $eligibility_reasons[] = "Reward has expired.";
+                    } else {
+                        $eligibility_reasons[] = "Reward within valid date range.";
+                    }
+                }
+                // 4. Check Minimum Quests (Visibility Check)
+                $total_completed_quests = count_all_completed_quests($student_post_id);
+                if ($total_completed_quests < $min_quests) {
+                    $is_eligible = false;
+                    $eligibility_reasons[] = "Insufficient quests completed to view reward ($total_completed_quests / $min_quests).";
+                } else {
+                    $eligibility_reasons[] = "Sufficient quests completed to view reward ($total_completed_quests / $min_quests).";
+                }
+
+                if ($is_eligible) {
+                    // 5.  REUSE the eligibility check!
+                    $reward_data = get_reward_data($promotion_id); // Get reward data for cooldown, etc.
+                    $is_eligible = is_student_eligible_for_reward_display(
+                        $student_post_id,
+                        $reward_data['cooldown_period'],
+                        $promotion_id,
+                        $reward_data['redemption_limit']
+                    );
+                }
+
+                if ($is_eligible) {
+                    $output .= '<div class="promotion-card">';
+                    $output .= '<h3 class="promotion-name">' . esc_html($promotion_name) . '</h3>';
+                    $client_description = get_field('client_description', $post->ID);
+                    if ($client_description) {
+                        $output .= '<p class="promotion-description">' . wp_kses_post($client_description) . '</p>';
+                    }
+                    if ($required_coins > 0) {
+                        $output .= '<p class="promotion-cost">Requires: ' . esc_html($required_coins) . ' Coins</p>';
+                    }
+
+                    // Display Quest Progress
+                    $quest_progress_data = get_quest_completion_progress_for_display($student_post_id, $promotion_id);
+                    if (is_array($quest_progress_data) && count($quest_progress_data) > 0) {
+                        foreach ($quest_progress_data as $index => $progress_item) {
+                            $quests_needed_for_claim = $progress_item['quests_needed'];
+                            $quests_completed_for_claim = $progress_item['quests_completed'];
+                            $progress_percentage = $progress_item['progress'];
+                            $time_scope = $progress_item['time_scope'];
+                            $time_params = $progress_item['time_params'];
+                            $group_logic = $progress_item['group_logic'];
+
+                            // Generate a user-friendly time description
+                            $time_description = '';
+                            if ($time_scope === 'specific_range') {
+                                $start_date = isset($time_params['start_date']) ? date('Y-m-d', strtotime($time_params['start_date'])) : '';
+                                $end_date = isset($time_params['end_date']) ? date('Y-m-d', strtotime($time_params['end_date'])) : '';
+                                $time_description = sprintf(
+                                    'Complete %d quests between %s and %s',
+                                    $quests_needed_for_claim,
+                                    $start_date,
+                                    $end_date
+                                );
+                            } elseif ($time_scope === 'next_x_units') {
+                                $x_value = $time_params['x_value'] ?? 1;
+                                $time_unit = $time_params['time_unit'] ?? 'days';
+
+                                // Format the valid_from date for better readability
+                                $start_date_formatted = $valid_from? date('Y-m-d H:i:s', strtotime($valid_from)) : 'the reward start date';
+                                $time_description = sprintf(
+                                    'Complete %d quests within the next %d %s starting from %s',
+                                    $quests_needed_for_claim,
+                                    $x_value,
+                                    $time_unit,
+                                    $start_date_formatted
+                                );
+                            }
+                            elseif ($time_scope === 'last_x_units') {
+                                $x_value = $time_params['x_value'] ?? 1;
+                                $time_unit = $time_params['time_unit'] ?? 'days';
+                                $time_description = sprintf(
+                                    'Complete %d quests in the last %d %s',
+                                    $quests_needed_for_claim,
+                                    $x_value,
+                                    $time_unit
+                                );
+                            } else {
+                                $time_description = sprintf('Complete %d quests', $quests_needed_for_claim);
+                            }
+
+                            $output .= '<div class="reward-progress-container">';
+                            $output .= '<p class="condition-logic">' . esc_html($group_logic) . '</p>';
+                            $output .= '<p class="progress-description">' . esc_html($time_description) . '</p>';
+                            $output .= '<div class="progress-bar">';
+                            $output .= '<div class="progress-fill" style="width: ' . esc_attr($progress_percentage) . '%;"></div>';
+                            $output .= '</div>';
+                            $output .= '<p class="progress-text">' . esc_html($quests_completed_for_claim) . ' / ' . esc_html($quests_needed_for_claim) . ' quests completed (' . esc_html($progress_percentage) . '%)</p>';
+                            $output .= '</div>';
+                        }
+                        $can_claim_now = ($coins >= $required_coins);
+                    } else {
+                        $can_claim_now = ($coins >= $required_coins);
+                    }
+
+                    $output .= '<button class="redeem-button" data-reward-id="' . esc_attr($post->ID) . '">Redeem</button>';
+
+                    if ($valid_until) {
+                        $now_date = new DateTime();
+                        $end_date = new DateTime($valid_until);
+                        $interval = $now_date->diff($end_date);
+                        $total_hours_left = ($interval->d * 24) + $interval->h;
+                        $is_urgent = $total_hours_left < 24;
+
+                        $output .= '<div class="clean-countdown-container" data-end-time="' . esc_attr($valid_until) . '" data-urgent="' . ($is_urgent ? 'true' : 'false') . '">';
+                        $output .= '<div class="time-left-header">Time Remaining:</div>';
+                        $output .= '<div class="time-units">';
+                        if ($interval->d > 0) {
+                            $output .= '<div class="time-unit days">';
+                            $output .= '<span class="value">' . esc_html($interval->d) . '</span>';
+                            $output .= '<span class="label">days</span>';
+                            $output .= '</div>';
+                        }
+                        $output .= '<div class="time-unit hours">';
+                        $output .= '<span class="value">' . sprintf('%02d', $interval->h) . '</span>';
+                        $output .= '<span class="label">hrs</span>';
+                        $output .= '</div>';
+                        $output .= '<div class="time-unit minutes">';
+                        $output .= '<span class="value">' . sprintf('%02d', $interval->i) . '</span>';
+                        $output .= '<span class="label">mins</span>';
+                        $output .= '</div>';
+                        $output .= '<div class="time-unit seconds">';
+                        $output .= '<span class="value">' . sprintf('%02d', $interval->s) . '</span>';
+                        $output .= '<span class="label">secs</span>';
+                        $output .= '</div>';
+                        $output .= '</div></div>';
+                    }
+                    $output .= '</div>'; // Close promotion-card
+                }
+            }
+            $output .= '</div>'; // Close promotions-grid
+        } else {
+            $output .= '<p>No eligible promotions available at the moment.</p>';
+        }
+
+        $output .= '</div>';
+        return $output;
+
+    }
+endif;

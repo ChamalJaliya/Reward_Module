@@ -106,25 +106,17 @@ jQuery(document).ready(function($) {
                 $('.reward-modal-confirm').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
             },
             success: function (response) {
-                // console.log("AJAX response:", response); // Debug: Check response structure
+                console.log("AJAX success response:", response); // Debug
+
                 if (response.data && response.data.needs_confirmation) {
                     // Show confirmation modal
                     showRewardModal(response.data.confirmation_data, rewardId);
-                    // // Set up confirm button handler
-                    // $('.reward-modal-confirm').off('click').on('click', function() {
-                    //     // Store the reward ID in the button data for the confirm callback
-                    //     $(this).data('reward-id', rewardId);
-                    //     // Hide modal immediately while processing
-                    //     hideRewardModal();
-                    //     // Resend the request with confirmation
-                    //     redeemReward(rewardId, true);
-                    // }).prop('disabled', false).text('Confirm');
                     $('.reward-modal-confirm').prop('disabled', false).text('Confirm');
                     return;
                 }
 
                 if (response.success) {
-                    // Success handling
+                    // Success
                     showAlert('Success', response.data.message || 'Reward redeemed successfully!', 'success');
 
                     // Update UI if needed
@@ -137,19 +129,33 @@ jQuery(document).ready(function($) {
 
                     toggleRewardsDropdown();
                 } else {
-                    // Error handling
-                    showAlert('Error', response.data.message || 'Failed to redeem reward.', 'error');
+                    // Error
+                    console.error("Server-side error response:", response);
+
+                    const firstMessage = response.data?.messages?.[0];
+                    if (firstMessage) {
+                        showAlert('Failed to Redeem', firstMessage.text, 'error');
+                    } else {
+                        showAlert('Failed to Redeem', 'Failed to redeem reward.', 'error');
+                    }
                 }
             },
             error: function(jqXHR, textStatus, errorThrown) {
                 console.error('AJAX error:', textStatus, errorThrown);
-                showAlert('Error', reward_ajax_object.ajax_error_message || 'An unexpected error occurred.', 'error');
+                let errorMessage = 'Something went wrong. Please try again later.';
+
+                if (jqXHR.responseJSON && jqXHR.responseJSON.data?.messages?.[0]) {
+                    errorMessage = jqXHR.responseJSON.data.messages[0].text;
+                }
+
+                showAlert('Failed to Redeem', errorMessage, 'error');
             },
             complete: function() {
                 $('.reward-modal-confirm').prop('disabled', false).text('Confirm');
             }
         });
     }
+
 
     // Function to show styled alerts
     function showAlert(title, message, type = 'info') {
