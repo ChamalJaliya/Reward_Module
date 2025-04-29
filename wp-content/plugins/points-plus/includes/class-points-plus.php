@@ -187,6 +187,7 @@ class Points_Plus {
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/quests.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/rules.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/students.php';
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/promotions-list.php';
 
         $this->loader = new Points_Plus_Loader();
 

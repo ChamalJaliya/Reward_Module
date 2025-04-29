@@ -79,6 +79,11 @@ require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus.php';
 require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-api.php'; // Include API handler
 require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-rule-engine.php'; // Include Rule Engine
 require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-execution.php'; // Include Reward Execution
+require_once plugin_dir_path(__FILE__) . 'includes/student-profile.php';
+
+require_once plugin_dir_path(__FILE__) . 'includes/reward-system.php';
+require_once plugin_dir_path(__FILE__) . 'includes/notification-system.php';
+require_once plugin_dir_path(__FILE__) . 'includes/enqueue-scripts.php';
 
 /**
  * Function to create custom database tables.
@@ -174,6 +179,7 @@ function points_plus_register_shortcodes(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/quests.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/rules.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/students.php';
+    require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/promotions-list.php';
 }
 
 

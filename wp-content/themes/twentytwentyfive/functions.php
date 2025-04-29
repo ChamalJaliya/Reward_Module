@@ -105,10 +105,10 @@ if (!function_exists('twentytwentyfive_format_binding')) :
 endif;
 
 // Include modular functionality files
-require_once get_template_directory() . '/inc/student-profile.php';
-require_once get_template_directory() . '/inc/quest-system.php';
-require_once get_template_directory() . '/inc/reward-system.php';
-require_once get_template_directory() . '/inc/notification-system.php';
-require_once get_template_directory() . '/inc/daily-rewards.php';
-require_once get_template_directory() . '/inc/shortcodes.php';
-require_once get_template_directory() . '/inc/enqueue-scripts.php';
+//require_once get_template_directory() . '/inc/student-profile.php';
+//require_once get_template_directory() . '/inc/quest-system.php';
+//require_once get_template_directory() . '/inc/reward-system.php';
+//require_once get_template_directory() . '/inc/notification-system.php';
+//require_once get_template_directory() . '/inc/daily-rewards.php';
+//require_once get_template_directory() . '/inc/shortcodes.php';
+//require_once get_template_directory() . '/inc/enqueue-scripts.php';

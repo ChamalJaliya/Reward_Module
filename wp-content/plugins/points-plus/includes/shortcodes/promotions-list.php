@@ -1,13 +1,216 @@
 <?php
+/**
+ * Shortcode functionality
+ */
+
+if (!function_exists('count_all_completed_quests')) :
+    /**
+     * Counts all completed quests for a student.
+     *
+     * @param int $student_id The ID of the student.
+     * @return int The total number of completed quests.
+     */
+    function count_all_completed_quests($student_id) {
+        error_log("count_all_completed_quests: Started for student: {$student_id}");
+
+        $args = [
+            'post_type'   => 'student_quests',
+            'numberposts' => -1,
+            'meta_query'  => [
+                [
+                    'key'   => 'student',
+                    'value' => $student_id,
+                    'compare' => 'LIKE'
+                ],
+            ],
+        ];
+
+        $student_quests = get_posts($args);
+        $completed_count = 0;
+        error_log("count_all_completed_quests: Found " . count($student_quests) . " student_quests posts.");
+
+        foreach ($student_quests as $student_quest) {
+            $progress_data = get_field('quest_progress', $student_quest->ID);
+            if (is_array($progress_data)) {
+                foreach ($progress_data as $progress) {
+                    if (isset($progress['status']) && $progress['status'] === 'completed') {
+                        $completed_count++;
+                    }
+                }
+            }
+        }
+
+        error_log("count_all_completed_quests: Completed quests count: {$completed_count}");
+        return $completed_count;
+    }
+endif;
+
+if (!function_exists('get_quest_completion_progress_for_display')) :
+    /**
+     * Calculates quest completion progress for display purposes, considering eligibility rules.
+     *
+     * @param int $student_id The ID of the student.
+     * @param int $reward_id  The ID of the reward item.
+     * @return array An array of quest progress data, one entry per 'quests_completed' condition.
+     */
+    function get_quest_completion_progress_for_display($student_id, $reward_id) {
+        error_log("get_quest_completion_progress_for_display: Started for student: {$student_id}, reward: {$reward_id}");
+
+        $eligibility_rules = get_field('eligibility_rules', $reward_id);
+        $valid_from = get_field('valid_from', $reward_id);
+        $progress_data = [];
+
+        if (!empty($eligibility_rules)) {
+            error_log("get_quest_completion_progress_for_display: Found " . count($eligibility_rules) . " eligibility rules.");
+
+            foreach ($eligibility_rules as $rule_id) {
+                $rule_progress_data = get_quests_needed_for_rule_display($student_id, $rule_id ,$valid_from);
+                if (is_array($rule_progress_data)) {
+                    $progress_data = array_merge($progress_data, $rule_progress_data);
+                }
+            }
+        } else {
+            error_log("get_quest_completion_progress_for_display: No eligibility rules found.");
+        }
+
+        error_log("get_quest_completion_progress_for_display: Final progress data: " . print_r($progress_data, true));
+        return $progress_data;
+    }
+endif;
+
+if (!function_exists('get_quests_needed_for_rule_display')) :
+    /**
+     * Helper function to get quests needed and progress for a single rule, handling multiple conditions.
+     *
+     * @param int $student_id The ID of the student.
+     * @param int $rule_id    The ID of the rule.
+     * @param string $valid_from The valid_from date for the reward (used for next_x_units)
+     * @return array An array of quest progress data for this rule.
+     */
+    function get_quests_needed_for_rule_display($student_id, $rule_id,$valid_from) {
+        error_log("get_quests_needed_for_rule_display: Started for student: {$student_id}, rule: {$rule_id}");
+        error_log("Calling get_quests_needed_for_rule_display with RULE: {$rule_id}, STUDENT: {$student_id}");
+        $conditions = get_field('conditions', $rule_id);
+
+        // Debug: check if conditions are retrieved correctly
+        error_log("Conditions for rule {$rule_id}: " . print_r($conditions, true));
+
+        $progress_data = [];
+
+        if (!empty($conditions)) {
+            error_log("get_quests_needed_for_rule_display: Found " . count($conditions) . " condition groups.");
+
+            foreach ($conditions as $condition_group) {
+                $condition_items = $condition_group['condition_items'] ?? [];
+                error_log("Condition Group: " . print_r($condition_group, true));
+
+                $group_logic = isset($condition_group['group_logic']) ?
+                    strtoupper(trim($condition_group['group_logic'])) :
+                    'AND';
+                $group_logic = preg_replace('/:.*/', '', $group_logic);
+                $group_logic = ($group_logic === 'OR') ? 'OR' : 'AND';
+
+                error_log("get_quests_needed_for_rule_display: Processing condition group with logic: {$group_logic}");
+
+                foreach ($condition_items as $condition_item) {
+                    error_log("Condition Item: " . print_r($condition_item, true));
+
+                    if ($condition_item['field'] === 'quests_completed') {
+                        $value = intval($condition_item['value']);
+                        $quests_needed = $value;
+                        $operator = $condition_item['operator'] ?? '';
+                        $time_scope = $condition_item['time_scope'];
+                        $time_params = $condition_item['time_parameters'];
+
+                        error_log("Student ID: {$student_id} | Time Scope: {$time_scope} | Time Params: " . print_r($time_params, true));
+
+                        $quests_completed_in_scope = get_student_data_with_time_scope(
+                            $student_id,
+                            $condition_item['field'],
+                            $time_scope,
+                            $time_params,
+                            $valid_from
+                        );
+                        error_log("Quests completed: {$quests_completed_in_scope} | Operator: {$operator} | Target Value: {$value}");
+                        $progress = ($quests_needed > 0) ? min(($quests_completed_in_scope / $quests_needed) * 100, 100) : 0;
+
+                        $progress_data[] = [
+                            'quests_needed'   => $quests_needed,
+                            'quests_completed' => $quests_completed_in_scope,
+                            'progress'        => $progress,
+                            'time_scope'     => $time_scope,
+                            'time_params'     => $time_params,
+                            'group_logic'     => $group_logic,
+                        ];
+
+                        error_log("get_quests_needed_for_rule_display: quests_completed condition - Value: {$value}, Time scope: {$time_scope}, Quests completed in scope: {$quests_completed_in_scope}, Quests needed: {$quests_needed}, Progress: {$progress}");
+                    }
+                }
+            }
+        } else {
+            error_log("get_quests_needed_for_rule_display: No conditions found for rule.");
+        }
+
+        error_log("get_quests_needed_for_rule_display: Final progress data: " . print_r($progress_data, true));
+        return $progress_data;
+    }
+endif;
+
+if (!function_exists('is_student_eligible_for_reward_display')) :
+    /**
+     * Checks if a student is eligible to claim their reward (based on include/exclude lists,
+     * cooldown, redemption limits).
+     *
+     * @param int $student_post_id   The Post ID of the student CPT.
+     * @param int $cooldown_period   The cooldown period in seconds.
+     * @param int $reward_id         The Post ID of the "Reward Item" post.
+     * @param int $redemption_limit  The maximum number of redemptions allowed (0 for unlimited).
+     * @return bool True if eligible, false otherwise.
+     */
+    function is_student_eligible_for_reward_display($student_post_id, $cooldown_period, $reward_id, $redemption_limit) {
+        error_log("=== STARTING ELIGIBILITY CHECK ===");
+        error_log("Student ID: {$student_post_id}, Reward ID: {$reward_id}");
+        error_log("Cooldown: {$cooldown_period}s, Redemption Limit: " . ($redemption_limit ?: 'Unlimited'));
+
+        if (!function_exists('get_field') || !$student_post_id) {
+            error_log("ERROR: ACF functions not found or invalid Student ID");
+            return false;
+        }
+
+        // 1. Get include/exclude lists
+        $include_students = get_field('include_students', $reward_id);
+        $exclude_students = get_field('exclude_students', $reward_id);
+        $eligibility_rules = get_field('eligibility_rules', $reward_id);
+
+        error_log("Include Students: " . print_r($include_students, true));
+        error_log("Exclude Students: " . print_r($exclude_students, true));
+        error_log("Eligibility Rules: " . print_r($eligibility_rules, true));
+
+        // 2. Exclude check (highest priority)
+        if (is_array($exclude_students) && in_array($student_post_id, $exclude_students)) {
+            error_log("FAIL: Student is explicitly excluded");
+            return false;
+        }
+
+        // 3. Include check (if not excluded)
+        if (is_array($include_students) && !empty($include_students) && !in_array($student_post_id, $include_students)) {
+            error_log("FAIL: Student is not in the include list");
+            return false;
+        }
+
+        error_log("PASS: Student is eligible for reward");
+        return true;
+    }
+endif;
 
 /**
  * Shortcode to display eligible promotion list on promotions page
  */
 add_shortcode('promotions_list', 'promotions_page_shortcode_function');
 
+
 if (!function_exists('promotions_page_shortcode_function')) :
-    function promotions_page_shortcode_function()
-    {
+    function promotions_page_shortcode_function() {
         $target_email = 'cjaliya.sln2@gmail.com'; // IMPORTANT:  Dynamically get logged-in user's email
         $student_post_id = 0;
 
@@ -26,7 +229,8 @@ if (!function_exists('promotions_page_shortcode_function')) :
         }
 
         $output = '<div class="promotions-page">';
-        // Removed:  $output .= '<h2>Eligible Promotions</h2>';
+        $points = get_field('points', $student_post_id) ?: 0;
+        $coins = get_field('coins', $student_post_id) ?: 0;
 
         $now = current_time('Y-m-d H:i:s');
 
@@ -56,7 +260,7 @@ if (!function_exists('promotions_page_shortcode_function')) :
         ));
 
         if ($reward_items) {
-            $output .= '<div class="promotions-grid">'; // Changed to a grid layout
+            $output .= '<div class="promotions-grid">';
             foreach ($reward_items as $post) {
                 $promotion_id = $post->ID;
                 $promotion_name = get_the_title($promotion_id);
@@ -121,7 +325,7 @@ if (!function_exists('promotions_page_shortcode_function')) :
                 }
 
                 if ($is_eligible) {
-                    $output .= '<div class="promotion-card">'; // Changed to promotion-card
+                    $output .= '<div class="promotion-card">';
                     $output .= '<h3 class="promotion-name">' . esc_html($promotion_name) . '</h3>';
                     $client_description = get_field('client_description', $post->ID);
                     if ($client_description) {
@@ -156,7 +360,9 @@ if (!function_exists('promotions_page_shortcode_function')) :
                             } elseif ($time_scope === 'next_x_units') {
                                 $x_value = $time_params['x_value'] ?? 1;
                                 $time_unit = $time_params['time_unit'] ?? 'days';
-                                $start_date_formatted = $valid_from ? date('Y-m-d H:i:s', strtotime($valid_from)) : 'the reward start date';
+
+                                // Format the valid_from date for better readability
+                                $start_date_formatted = $valid_from? date('Y-m-d H:i:s', strtotime($valid_from)) : 'the reward start date';
                                 $time_description = sprintf(
                                     'Complete %d quests within the next %d %s starting from %s',
                                     $quests_needed_for_claim,
@@ -164,13 +370,13 @@ if (!function_exists('promotions_page_shortcode_function')) :
                                     $time_unit,
                                     $start_date_formatted
                                 );
-                            } elseif ($time_scope === 'last_x_units') {
+                            }
+                            elseif ($time_scope === 'last_x_units') {
                                 $x_value = $time_params['x_value'] ?? 1;
                                 $time_unit = $time_params['time_unit'] ?? 'days';
                                 $time_description = sprintf(
                                     'Complete %d quests in the last %d %s',
                                     $quests_needed_for_claim,
-                                    $x_value,
                                     $x_value,
                                     $time_unit
                                 );
@@ -179,7 +385,7 @@ if (!function_exists('promotions_page_shortcode_function')) :
                             }
 
                             $output .= '<div class="reward-progress-container">';
-                            $output .= '<p class="condition-logic">' . esc_html($group_logic) . '</p>'; // Show AND/OR
+                            $output .= '<p class="condition-logic">' . esc_html($group_logic) . '</p>';
                             $output .= '<p class="progress-description">' . esc_html($time_description) . '</p>';
                             $output .= '<div class="progress-bar">';
                             $output .= '<div class="progress-fill" style="width: ' . esc_attr($progress_percentage) . '%;"></div>';
@@ -187,13 +393,12 @@ if (!function_exists('promotions_page_shortcode_function')) :
                             $output .= '<p class="progress-text">' . esc_html($quests_completed_for_claim) . ' / ' . esc_html($quests_needed_for_claim) . ' quests completed (' . esc_html($progress_percentage) . '%)</p>';
                             $output .= '</div>';
                         }
-                        $can_claim_now = ($student_coins >= $required_coins);
+                        $can_claim_now = ($coins >= $required_coins);
                     } else {
-                        $can_claim_now = ($student_coins >= $required_coins);
+                        $can_claim_now = ($coins >= $required_coins);
                     }
 
                     $output .= '<button class="redeem-button" data-reward-id="' . esc_attr($post->ID) . '">Redeem</button>';
-
 
                     if ($valid_until) {
                         $now_date = new DateTime();
@@ -227,7 +432,6 @@ if (!function_exists('promotions_page_shortcode_function')) :
                     }
                     $output .= '</div>'; // Close promotion-card
                 }
-                // Removed else:  We don't want to display ineligible promotions at all.
             }
             $output .= '</div>'; // Close promotions-grid
         } else {
@@ -236,429 +440,6 @@ if (!function_exists('promotions_page_shortcode_function')) :
 
         $output .= '</div>';
         return $output;
-    }
-endif;
 
-/*
- * Helper Functions (Add these to your functions.php or a separate file)
- */
-
-if (!function_exists('get_student_post_id_by_email')) :
-    /**
-     * Retrieves the student post ID based on the student's email.
-     *
-     * @param string $email The student's email address.
-     * @return int|false The student post ID, or false if not found.
-     */
-    function get_student_post_id_by_email($email)
-    {
-        $users = get_users(array('meta_key' => 'email', 'meta_value' => $email));
-        if (!empty($users)) {
-            $user = reset($users); // Get the first user
-            $student_post_id = get_user_meta($user->ID, 'student_post_id', true);
-            if ($student_post_id) {
-                return $student_post_id;
-            }
-        }
-        return false;
-    }
-endif;
-
-if (!function_exists('count_all_completed_quests')) :
-    /**
-     * Counts all completed quests for a student.
-     *
-     * @param int $student_id The ID of the student.
-     * @return int The total number of completed quests.
-     */
-    function count_all_completed_quests($student_id)
-    {
-        error_log("count_all_completed_quests: Started for student: {$student_id}");
-
-        $args = [
-            'post_type' => 'student_quests',
-            'numberposts' => -1,
-            'meta_query' => [
-                [
-                    'key' => 'student',
-                    'value' => $student_id,
-                    'compare' => 'LIKE'
-                ],
-            ],
-        ];
-
-        $student_quests = get_posts($args);
-        $completed_count = 0;
-        error_log("count_all_completed_quests: Found " . count($student_quests) . " student_quests posts.");
-
-        foreach ($student_quests as $student_quest) {
-            $progress_data = get_field('quest_progress', $student_quest->ID);
-            if (is_array($progress_data)) {
-                foreach ($progress_data as $progress) {
-                    if (isset($progress['status']) && $progress['status'] === 'completed') {
-                        $completed_count++;
-                    }
-                }
-            }
-        }
-
-        error_log("count_all_completed_quests: Completed quests count: {$completed_count}");
-        return $completed_count;
-    }
-endif;
-
-if (!function_exists('get_quest_completion_progress_for_display')) :
-    /**
-     * Calculates quest completion progress for display purposes, considering eligibility rules.
-     *
-     * @param int $student_id The ID of the student.
-     * @param int $reward_id The ID of the reward item.
-     * @return array An array of quest progress data, one entry per 'quests_completed' condition.
-     */
-    function get_quest_completion_progress_for_display($student_id, $reward_id)
-    {
-        error_log("get_quest_completion_progress_for_display: Started for student: {$student_id}, reward: {$reward_id}");
-
-        $eligibility_rules = get_field('eligibility_rules', $reward_id);
-        $valid_from = get_field('valid_from', $reward_id);
-        $progress_data = [];
-
-        if (!empty($eligibility_rules)) {
-            error_log("get_quest_completion_progress_for_display: Found " . count($eligibility_rules) . " eligibility rules.");
-
-            foreach ($eligibility_rules as $rule_id) {
-                $rule_progress_data = get_quests_needed_for_rule_display($student_id, $rule_id, $valid_from);
-                if (is_array($rule_progress_data)) {
-                    $progress_data = array_merge($progress_data, $rule_progress_data);
-                }
-            }
-        } else {
-            error_log("get_quest_completion_progress_for_display: No eligibility rules found.");
-        }
-
-        error_log("get_quest_completion_progress_for_display: Final progress data: " . print_r($progress_data, true));
-        return $progress_data;
-    }
-endif;
-
-if (!function_exists('get_quests_needed_for_rule_display')) :
-    /**
-     * Helper function to get quests needed and progress for a single rule, handling multiple conditions.
-     *
-     * @param int $student_id The ID of the student.
-     * @param int $rule_id The ID of the rule.
-     * @param string $valid_from The valid_from date for the reward (used for next_x_units)
-     * @return array An array of quest progress data for this rule.
-     */
-    function get_quests_needed_for_rule_display($student_id, $rule_id, $valid_from)
-    {
-        error_log("get_quests_needed_for_rule_display: Started for student: {$student_id}, rule: {$rule_id}");
-        error_log("Calling get_quests_needed_for_rule_display with RULE: {$rule_id}, STUDENT: {$student_id}");
-        $conditions = get_field('conditions', $rule_id);
-
-        // Debug: check if conditions are retrieved correctly
-        error_log("Conditions for rule {$rule_id}: " . print_r($conditions, true));
-
-        $progress_data = [];
-
-        if (!empty($conditions)) {
-            error_log("get_quests_needed_for_rule_display: Found " . count($conditions) . " condition groups.");
-
-            foreach ($conditions as $condition_group) {
-                $condition_items = $condition_group['condition_items'] ?? [];
-                error_log("Condition Group: " . print_r($condition_group, true));
-
-                $group_logic = isset($condition_group['group_logic']) ?
-                    strtoupper(trim($condition_group['group_logic'])) :
-                    'AND';
-                $group_logic = preg_replace('/:.*/', '', $group_logic);
-                $group_logic = ($group_logic === 'OR') ? 'OR' : 'AND';
-
-                error_log("get_quests_needed_for_rule_display: Processing condition group with logic: {$group_logic}");
-
-                foreach ($condition_items as $condition_item) {
-                    error_log("Condition Item: " . print_r($condition_item, true));
-
-                    if ($condition_item['field'] === 'quests_completed') {
-                        $value = intval($condition_item['value']);
-                        $quests_needed = $value;
-                        $operator = $condition_item['operator'] ?? '';
-                        $time_scope = $condition_item['time_scope'];
-                        $time_params = $condition_item['time_parameters'];
-
-                        error_log("Student ID: {$student_id} | Time Scope: {$time_scope} | Time Params: " . print_r($time_params, true));
-
-                        $quests_completed_in_scope = get_student_data_with_time_scope(
-                            $student_id,
-                            $condition_item['field'],
-                            $time_scope,
-                            $time_params,
-                            $valid_from
-                        );
-                        error_log("Quests completed: {$quests_completed_in_scope} | Operator: {$operator} | Target Value: {$value}");
-                        $progress = ($quests_needed > 0) ? min(($quests_completed_in_scope / $quests_needed) * 100, 100) : 0;
-
-                        $progress_data[] = [
-                            'quests_needed' => $quests_needed,
-                            'quests_completed' => $quests_completed_in_scope,
-                            'progress' => $progress,
-                            'time_scope' => $time_scope,
-                            'time_params' => $time_params,
-                            'group_logic' => $group_logic,
-                        ];
-
-                        error_log("get_quests_needed_for_rule_display: quests_completed condition - Value: {$value}, Time scope: {$time_scope}, Quests completed in scope: {$quests_completed_in_scope}, Quests needed: {$quests_needed}, Progress: {$progress}");
-                    }
-                }
-            }
-        } else {
-            error_log("get_quests_needed_for_rule_display: No conditions found for rule.");
-        }
-
-        error_log("get_quests_needed_for_rule_display: Final progress data: " . print_r($progress_data, true));
-        return $progress_data;
-    }
-endif;
-
-if (!function_exists('is_student_eligible_for_reward_display')) :
-    /**
-     * Checks if a student is eligible to claim their reward (based on include/exclude lists,
-     * cooldown, redemption limits).
-     *
-     * @param int $student_post_id The Post ID of the student CPT.
-     * @param int $cooldown_period The cooldown period in seconds.
-     * @param int $reward_id The Post ID of the "Reward Item" post.
-     * @param int $redemption_limit The maximum number of redemptions allowed (0 for unlimited).
-     * @return bool True if eligible, false otherwise.
-     */
-    function is_student_eligible_for_reward_display($student_post_id, $cooldown_period, $reward_id, $redemption_limit)
-    {
-        error_log("=== STARTING ELIGIBILITY CHECK ===");
-        error_log("Student ID: {$student_post_id}, Reward ID: {$reward_id}");
-        error_log("Cooldown: {$cooldown_period}s, Redemption Limit: " . ($redemption_limit ?: 'Unlimited'));
-
-        if (!function_exists('get_field') || !$student_post_id) {
-            error_log("ERROR: ACF functions not found or invalid Student ID");
-            return false;
-        }
-
-        // 1. Get include/exclude lists
-        $include_students = get_field('include_students', $reward_id);
-        $exclude_students = get_field('exclude_students', $reward_id);
-        $eligibility_rules = get_field('eligibility_rules', $reward_id);
-
-        error_log("Include Students: " . print_r($include_students, true));
-        error_log("Exclude Students: " . print_r($exclude_students, true));
-        error_log("Eligibility Rules: " . print_r($eligibility_rules, true));
-
-        // 2. Exclude check (highest priority)
-        if (is_array($exclude_students) && in_array($student_post_id, $exclude_students)) {
-            error_log("FAIL: Student is explicitly excluded");
-            return false;
-        }
-
-        // 3. Include check (if not excluded)
-        if (is_array($include_students) && !empty($include_students) && !in_array($student_post_id, $include_students)) {
-            error_log("FAIL: Student is not in the include list");
-            return false;
-        }
-
-        error_log("PASS: Student is eligible for reward");
-        return true;
-    }
-endif;
-
-if (!function_exists('get_student_data_with_time_scope')) :
-    /**
-     * Retrieves student data (e.g., completed quests) within a specified time scope.
-     *
-     * @param int $student_id The ID of the student.
-     * @param string $field The field to check (e.g., 'quests_completed').
-     * @param string $time_scope The time scope ('all_time', 'specific_range', 'next_x_units', 'last_x_units').
-     * @param array $time_params Parameters for the time scope (e.g., start/end dates, x value, unit).
-     * @param string $valid_from The valid from date of the reward.
-     * @return int    The count of the data within the time scope.
-     */
-    function get_student_data_with_time_scope($student_id, $field, $time_scope, $time_params, $valid_from = null)
-    {
-        global $wpdb;
-
-        error_log("get_student_data_with_time_scope: Student ID: {$student_id}, Field: {$field}, Time Scope: {$time_scope}, Params: " . print_r($time_params, true) . ", Valid From: {$valid_from}");
-
-        if ($field !== 'quests_completed') {
-            error_log("get_student_data_with_time_scope: Unsupported field: {$field}");
-            return 0;
-        }
-
-        $count = 0;
-        $now = current_time('Y-m-d H:i:s');
-
-        switch ($time_scope) {
-            case 'all_time':
-                // Get all student_quests posts for the student, regardless of date.
-                $args = [
-                    'post_type' => 'student_quests',
-                    'posts_per_page' => -1,
-                    'meta_query' => [
-                        [
-                            'key' => 'student',
-                            'value' => $student_id,
-                            'compare' => 'LIKE',
-                        ],
-                    ],
-                    'fields' => 'ids', //important
-                ];
-                $student_quest_ids = get_posts($args);
-
-                if ($student_quest_ids) {
-                    foreach ($student_quest_ids as $student_quest_id) {
-                        $progress_data = get_field('quest_progress', $student_quest_id);
-                        if (is_array($progress_data)) {
-                            foreach ($progress_data as $quest_progress) {
-                                if ($quest_progress['status'] == 'completed') {
-                                    $count++;
-                                }
-                            }
-                        }
-                    }
-                }
-                error_log("get_student_data_with_time_scope: all_time count: {$count}");
-                break;
-
-            case 'specific_range':
-                $start_date = isset($time_params['start_date']) ? date('Y-m-d H:i:s', strtotime($time_params['start_date'])) : '';
-                $end_date = isset($time_params['end_date']) ? date('Y-m-d H:i:s', strtotime($time_params['end_date'])) : '';
-
-                if ($start_date && $end_date) {
-                    $args = [
-                        'post_type' => 'student_quests',
-                        'posts_per_page' => -1,
-                        'meta_query' => [
-                            'relation' => 'AND',
-                            [
-                                'key' => 'student',
-                                'value' => $student_id,
-                                'compare' => 'LIKE',
-                            ],
-                            [
-                                'key' => 'date_completed', // Assuming you store completion date
-                                'value' => array($start_date, $end_date),
-                                'compare' => 'BETWEEN',
-                                'type' => 'DATETIME',
-                            ],
-                        ],
-                        'fields' => 'ids',
-                    ];
-                    $student_quest_ids = get_posts($args);
-                    if ($student_quest_ids) {
-                        foreach ($student_quest_ids as $student_quest_id) {
-                            $progress_data = get_field('quest_progress', $student_quest_id);
-                            if (is_array($progress_data)) {
-                                foreach ($progress_data as $quest_progress) {
-                                    if ($quest_progress['status'] == 'completed') {
-                                        $count++;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    error_log("get_student_data_with_time_scope: specific_range count: {$count}, start: {$start_date}, end: {$end_date}");
-                }
-                break;
-
-            case 'next_x_units':
-                if ($valid_from) {
-                    $start_date = date('Y-m-d H:i:s', strtotime($valid_from));
-                } else {
-                    $start_date = date('Y-m-d H:i:s');
-                }
-
-                $x_value = intval($time_params['x_value'] ?? 1);
-                $time_unit = $time_params['time_unit'] ?? 'days';
-
-                $end_date = date('Y-m-d H:i:s', strtotime("{$start_date} +{$x_value} {$time_unit}"));
-
-                $args = [
-                    'post_type' => 'student_quests',
-                    'posts_per_page' => -1,
-                    'meta_query' => [
-                        'relation' => 'AND',
-                        [
-                            'key' => 'student',
-                            'value' => $student_id,
-                            'compare' => 'LIKE',
-                        ],
-                        [
-                            'key' => 'date_completed',
-                            'value' => array($start_date, $end_date),
-                            'compare' => 'BETWEEN',
-                            'type' => 'DATETIME'
-                        ]
-                    ],
-                    'fields' => 'ids'
-                ];
-                $student_quest_ids = get_posts($args);
-                if ($student_quest_ids) {
-                    foreach ($student_quest_ids as $student_quest_id) {
-                        $progress_data = get_field('quest_progress', $student_quest_id);
-                        if (is_array($progress_data)) {
-                            foreach ($progress_data as $quest_progress) {
-                                if ($quest_progress['status'] == 'completed') {
-                                    $count++;
-                                }
-                            }
-                        }
-                    }
-                }
-                error_log("get_student_data_with_time_scope: next_x_units count: {$count}, start: {$start_date}, end: {$end_date}");
-                break;
-
-            case 'last_x_units':
-                $end_date = $now;
-                $x_value = intval($time_params['x_value'] ?? 1);
-                $time_unit = $time_params['time_unit'] ?? 'days';
-                $start_date = date('Y-m-d H:i:s', strtotime("{$end_date} -{$x_value} {$time_unit}"));
-
-                $args = [
-                    'post_type' => 'student_quests',
-                    'posts_per_page' => -1,
-                    'meta_query' => [
-                        'relation' => 'AND',
-                        [
-                            'key' => 'student',
-                            'value' => $student_id,
-                            'compare' => 'LIKE',
-                        ],
-                        [
-                            'key' => 'date_completed',
-                            'value' => array($start_date, $end_date),
-                            'compare' => 'BETWEEN',
-                            'type' => 'DATETIME'
-                        ],
-                    ],
-                    'fields' => 'ids'
-                ];
-                $student_quest_ids = get_posts($args);
-                if ($student_quest_ids) {
-                    foreach ($student_quest_ids as $student_quest_id) {
-                        $progress_data = get_field('quest_progress', $student_quest_id);
-                        if (is_array($progress_data)) {
-                            foreach ($progress_data as $quest_progress) {
-                                if ($quest_progress['status'] == 'completed') {
-                                    $count++;
-                                }
-                            }
-                        }
-                    }
-                }
-                error_log("get_student_data_with_time_scope: last_x_units count: {$count}, start: {$start_date}, end: {$end_date}");
-                break;
-
-            default:
-                error_log("get_student_data_with_time_scope: Invalid time scope: {$time_scope}");
-                return 0;
-        }
-
-        return $count;
     }
 endif;
