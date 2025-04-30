@@ -211,7 +211,7 @@ add_shortcode('promotions_list', 'promotions_page_shortcode_function');
 
 if (!function_exists('promotions_page_shortcode_function')) :
     function promotions_page_shortcode_function() {
-        $target_email = 'cjaliya.sln2@gmail.com'; // IMPORTANT:  Dynamically get logged-in user's email
+        $target_email = 'nipunchamika11@gmail.com'; // IMPORTANT:  Dynamically get logged-in user's email
         $student_post_id = 0;
 
         try {

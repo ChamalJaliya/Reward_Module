@@ -582,7 +582,7 @@ add_action('wp_ajax_update_students_redeems_status', function () {
 
             // Now fetch the e‑mail
             // $student_email = get_field('email', $student_id);
-            $student_email = 'cjaliya.sln2@gmail.com';
+            $student_email = 'nipunchamika11@gmail.com';
             if (! is_email($student_email)) {
                 error_log("PP-ERROR: No valid student e-mail for post {$post_id} (student_id={$student_id})");
             } else {
@@ -621,7 +621,7 @@ add_action('wp_ajax_update_students_redeems_status', function () {
 
             // Now fetch the e‑mail
             // $student_email = get_field('email', $student_id);
-            $student_email = 'cjaliya.sln2@gmail.com';
+            $student_email = 'nipunchamika11@gmail.com';
             // (normalize student_id exactly the same as above)…
             // fetch and validate $student_email as above…
             // then:

@@ -1,0 +1,471 @@
+/* .notifications-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.notifications-list .notification-item {
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+}
+.notifications-list .notification-item.unread {
+  background: #f9f9f9;
+  font-weight: bold;
+}
+.notification-date {
+  font-size: 0.85em;
+  color: #666;
+} */
+
+/* ===================================================================================== */
+
+/* container to hold the list and unread-count badge if you want */
+/* .pp-notifications-container {
+  position: relative;
+} */
+
+/* the scrolling panel */
+/* .notifications-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+} */
+
+/* each item */
+/* .notifications-list .notification-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+} */
+
+/* unread items */
+/* .notifications-list .notification-item.unread {
+  background: #f0f8ff;
+  font-weight: 600;
+} */
+
+/* read items */
+/* .notifications-list .notification-item.read {
+  background: #fafafa;
+  color: #666;
+} */
+
+/* message area grows to fill */
+/* .notification-message {
+  flex: 1;
+} */
+
+/* date on the right */
+/* .notification-date {
+  font-size: 0.8em;
+  color: #999;
+  margin-left: 8px;
+} */
+
+/* the “mark as read” button */
+/* .mark-as-read-button {
+  margin-left: 12px;
+  background: none;
+  border: none;
+  font-size: 0.85em;
+  color: #0073aa;
+  cursor: pointer;
+}
+.mark-as-read-button:hover {
+  color: #005177;
+} */
+
+/* ========================================================================== */
+
+/* =========================== Pretty Good ================================== */
+
+/* wrapper is full height & scrollable */
+/* .pp-notifications-container {
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 0;
+} */
+
+/* the panel background can be transparent so your theme shows through */
+/* .notifications-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+} */
+
+/* each item is a “card” */
+/* .notifications-list .notification-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background 0.2s;
+} */
+
+/* hover lightly */
+/* .notifications-list .notification-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+} */
+
+/* unread get a colored left border */
+/* .notifications-list .notification-item.unread {
+  border-left: 4px solid #fdbc15;
+  background: rgba(255, 255, 255, 0.07);
+  font-weight: 600;
+} */
+
+/* read items dim out */
+/* .notifications-list .notification-item.read {
+  color: rgba(255, 255, 255, 0.6);
+} */
+
+/* message flexes */
+/* .notification-message {
+  flex: 1;
+  padding-right: 0.5rem;
+} */
+
+/* date smaller & lighter */
+/* .notification-date {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-right: 0.75rem;
+  white-space: nowrap;
+} */
+
+/* our little check-button */
+/* .mark-as-read-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #fdbc15;
+  line-height: 1;
+  padding: 0;
+}
+.mark-as-read-button:hover {
+  color: #ffd966;
+} */
+
+/* =========================================================================== */
+
+/* =========================== Pretty Pretty Good ================================== */
+
+/* container holds everything and provides the data-unread-count */
+/* .pp-notifications-container {
+  max-height: 100%;
+  overflow-y: auto;
+} */
+
+/* plain reset */
+/* .notifications-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+} */
+
+/* stack items vertically, message→timestamp→icon */
+/* .notifications-list .notification-item {
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background 0.2s;
+} */
+
+/* hover highlight */
+/* .notifications-list .notification-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+} */
+
+/* unread: full-width bottom border, no left border */
+/* .notifications-list .notification-item.unread {
+  border-bottom: 4px solid #fdbc15;
+  background: rgba(255, 255, 255, 0.07);
+  font-weight: 600;
+} */
+
+/* message text */
+/* .notification-message {
+  padding: 1rem 1rem 0.5rem;
+} */
+
+/* timestamp UNDER the message, darker for readability */
+/* .notification-date {
+  font-size: 0.75rem;
+  color: #ccc;
+  padding: 0 1rem 0.75rem;
+} */
+
+/* position the check-icon at the bottom right */
+/* .mark-as-read-button {
+  align-self: flex-end;
+  margin: 0 1rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #fdbc15;
+  line-height: 1;
+} */
+
+/* lighten on hover */
+/* .mark-as-read-button:hover {
+  color: #ffd966;
+} */
+
+/* ================================================================================ */
+
+/* ================================= Works Smoothly =============================================== */
+
+/* container scroll wrapper */
+/* .pp-notifications-container {
+  max-height: 100%;
+  overflow-y: auto;
+} */
+
+/* ── THE RAIL ── an unbroken left border on the UL */
+/* .notifications-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 1rem; /* indent items to clear the rail */
+/* border-left: 4px solid #fdbc15; */
+/* } */
+
+/* each item now sits to the right of that rail */
+/* .notifications-list .notification-item {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem 1rem;
+  transition: background 0.2s, opacity 0.4s, height 0.4s, margin 0.4s,
+    padding 0.4s;
+} */
+
+/* subtle hover */
+/* .notifications-list .notification-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+} */
+
+/* unread get a light background & bold text */
+/* .notifications-list .notification-item.unread {
+  background: rgba(255, 255, 255, 0.07);
+  font-weight: 600;
+} */
+
+/* read items fade out */
+/* .notifications-list .notification-item.read {
+  color: rgba(255, 255, 255, 0.6);
+} */
+
+/* stack your message + timestamp neatly */
+/* .notification-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+} */
+
+/* spacing under the message */
+/* .notification-message {
+  margin-bottom: 0.25rem;
+} */
+
+/* timestamp under the message */
+/* .notification-date {
+  font-size: 0.75rem;
+  color: #ccc;
+} */
+
+/* checkmark button, at the end and vertically centered */
+/* .mark-as-read-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #fdbc15;
+  line-height: 1;
+  margin-left: 1rem;
+  align-self: center;
+}
+.mark-as-read-button:hover {
+  color: #ffd966;
+} */
+
+/* ========================================================================================= */
+
+/* ============================================ BEST ============================================= */
+
+/* container scroll wrapper */
+/* .pp-notifications-container {
+  max-height: 100%;
+  overflow-y: auto;
+} */
+
+/* ── THE RAIL ── an unbroken left border on the UL */
+/* .notifications-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 1rem; /* indent items to clear the rail */
+/* border-left: 4px solid #fdbc15;
+} */
+
+/* each item now sits to the right of that rail */
+/* .notifications-list .notification-item {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  max-height: 200px; /* high enough to contain any notification */
+/* overflow: hidden;
+  transition: background 0.2s ease, opacity 0.4s ease, max-height 0.4s ease,
+    margin 0.4s ease, padding 0.4s ease;
+} */
+
+/* subtle hover */
+/* .notifications-list .notification-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+} */
+
+/* unread get a light background & bold text */
+/* .notifications-list .notification-item.unread {
+  background: rgba(255, 255, 255, 0.07);
+  font-weight: 600;
+} */
+
+/* read items dim out */
+/* .notifications-list .notification-item.read {
+  color: rgba(255, 255, 255, 0.6);
+} */
+
+/* when removing: fade out & collapse */
+/* .notifications-list .notification-item.removing {
+  opacity: 0;
+  max-height: 0;
+  margin: 0;
+  /* collapse vertical padding but keep horizontal padding */
+/* padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 1rem;
+  padding-right: 1rem;
+} */
+
+/* stack your message + timestamp neatly */
+/* .notification-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+} */
+
+/* spacing under the message */
+/* .notification-message {
+  margin-bottom: 0.25rem;
+} */
+
+/* timestamp under the message */
+/* .notification-date {
+  font-size: 0.75rem;
+  color: #ccc;
+} */
+
+/* checkmark button, at the end and vertically centered */
+/* .mark-as-read-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #fdbc15;
+  line-height: 1;
+  margin-left: 1rem;
+  align-self: center;
+}
+.mark-as-read-button:hover {
+  color: #ffd966;
+} */
+
+/* ================================================================================= */
+
+/* container scroll wrapper */
+.pp-notifications-container {
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+/* notifications list reset */
+.notifications-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* each item as a card */
+.notifications-list .notification-item {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+/* “press” effect on unread items */
+.notifications-list .notification-item.unread:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* subtle hover lift (desktop only) */
+@media (hover: hover) {
+  .notifications-list .notification-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* unread style */
+.notifications-list .notification-item.unread {
+  border-left: 4px solid #fdbc15;
+}
+
+/* read: greyed out card */
+.notifications-list .notification-item.read {
+  opacity: 0.6;
+  background: #f5f5f5;
+  border-left: 4px solid transparent;
+}
+
+/* container for message+date */
+.notification-content {
+  display: flex;
+  flex-direction: column;
+}
+
+/* message text */
+.notification-message {
+  font-size: 1rem;
+  line-height: 1.4;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+/* timestamp */
+.notification-date {
+  font-size: 0.75rem;
+  color: #777;
+  align-self: flex-end;
+}
+
+/* ensure last item has bottom margin within container */
+.pp-notifications-container .notifications-list .notification-item:last-child {
+  margin-bottom: 1rem;
+}
