@@ -119,28 +119,10 @@ function pp_notifications_list_shortcode() {
         $output .= '<div class="notification-message">' . wp_kses_post($note['message']) . '</div>';
         $output .= $date_str;
         $output .= '</div>';
-
-        // if (!$is_read) {
-        //     $output .= '<button class="mark-as-read-button" aria-label="Mark as read" type="button">';
-        //     $output .= '<span class="dashicons dashicons-yes-alt"></span>';
-        //     $output .= '</button>';
-        // }
-
         $output .= '</li>';
     }
 
     $output .= '</ul></div>';
-
-    // Localize script data
-    // wp_localize_script(
-    //     'pp-notifications-list-js',
-    //     'ppNotifications',
-    //     array(
-    //         'ajaxurl' => admin_url('admin-ajax.php'),
-    //         'student_id' => $student_id,
-    //         'nonce' => wp_create_nonce('pp_mark_notification_read')
-    //     )
-    // );
 
     wp_localize_script(
         'pp-notifications-list-js',
