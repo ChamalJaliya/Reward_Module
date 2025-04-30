@@ -226,6 +226,7 @@ function points_plus_register_shortcodes(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/rules.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/students.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/promotions-list.php';
+    require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/notifications-list.php';
 }
 /**
  * Begins execution of the plugin.
