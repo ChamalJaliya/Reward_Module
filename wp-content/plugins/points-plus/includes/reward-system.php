@@ -143,6 +143,12 @@ if (!function_exists('is_student_eligible_for_reward')) :
             $rule_failure_message = '';
 
             foreach ($eligibility_rules as $rule_id) {
+                $rule_status = get_field('status', $rule_id);
+
+                if ($rule_status !== 'active') {
+                    error_log("SKIP: Rule ID {$rule_id} is inactive (status: {$rule_status})");
+                    continue; // Skip this rule
+                }
                 $rule_passed = evaluate_eligibility_rule($student_post_id, $rule_id, $valid_from);
 
                 if (!$rule_passed['passed']) {
@@ -849,7 +855,7 @@ if (!function_exists('handle_redeem_reward_ajax')) :
                 error_log('handle_redeem_reward_ajax: Processing reload reward');
                 $phone_number = get_field('student_mobile', $student_post_id);
                 error_log('handle_redeem_reward_ajax: Phone Number:'  . print_r($phone_number, true));
-                $current_coins = get_field('coins', $student_post_id) ?: 0;
+                $current_coins = get_field('student_coins', $student_post_id) ?: 0;
                 error_log('handle_redeem_reward_ajax: Current Coins:'  . print_r($current_coins, true));
 
                 if (empty($phone_number)) {
@@ -863,7 +869,6 @@ if (!function_exists('handle_redeem_reward_ajax')) :
                 }
 
                 if ($current_coins < $reward_data['required_coins']) {
-                    error_log(__('handle_redeem_reward_ajax: Insufficient coins!', 'your-theme-text-domain'));
                     $response = add_system_message(
                         $response,
                         sprintf(
@@ -874,7 +879,7 @@ if (!function_exists('handle_redeem_reward_ajax')) :
                         'error',
                         'INSUFFICIENT_COINS'
                     );
-                    throw new Exception('Insufficient coins for reload reward.', 'your-theme-text-domain');
+                    throw new Exception('Insufficient coins for reload reward.');
                 }
 
                 $is_confirmed = isset($_POST['confirmed']) && $_POST['confirmed'] === 'true';
@@ -930,10 +935,9 @@ if (!function_exists('handle_redeem_reward_ajax')) :
 
                 case 'multiplication':
                     $success_message = sprintf(
-                        esc_html( points_plus_translate('You earned %d points and %d coins from %d quests!') ),
+                        esc_html( points_plus_translate('You earned %d points and %d coins from played quests!') ),
                         $reward_granted_data['points_added'] ?? 0,
-                        $reward_granted_data['coins_added'] ?? 0,
-                        $reward_granted_data['quests_count'] ?? 0
+                        $reward_granted_data['coins_added'] ?? 0
                     );
                     break;
 
@@ -993,37 +997,59 @@ if (!function_exists('grant_reward')) :
      *
      * @return array An array containing success status and updated data.
      */
-        function grant_reward($student_post_id, $reward_data, $reward_id) {
-        error_log("=== GRANT REWARD STARTED===");
-        error_log("grant_reward: Function initiated for Student ID: " . $student_post_id .
-            ", Reward Data: " . print_r($reward_data, true) .
-            ", Reward Post ID: " . $reward_id);
+    function grant_reward($student_post_id, $reward_data, $reward_id) {
+        error_log("[REWARD SYSTEM] === STARTING GRANT_REWARD PROCESS ===");
+        error_log("[REWARD SYSTEM] Student ID: {$student_post_id}, Reward ID: {$reward_id}");
+        error_log("[REWARD SYSTEM] Reward Data: " . print_r($reward_data, true));
 
-        if (!function_exists('get_field') || !function_exists('update_field') || !$student_post_id) {
-            error_log("grant_reward: ACF functions not found or Student Post ID is invalid.");
+        // Validate prerequisites
+        if (!function_exists('get_field') || !function_exists('update_field')) {
+            error_log("[REWARD SYSTEM] ERROR: ACF functions not available");
+            return ['success' => false];
+        }
+
+        if (!$student_post_id) {
+            error_log("[REWARD SYSTEM] ERROR: Invalid Student Post ID");
             return ['success' => false];
         }
 
         $promotion_type = $reward_data['promotion_type'] ?? 'addition';
+        error_log("[REWARD SYSTEM] Promotion Type: {$promotion_type}");
 
-        switch ($promotion_type) {
-            case 'addition':
-                return grant_addition_reward($student_post_id, $reward_data, $reward_id);
+        try {
+            switch ($promotion_type) {
+                case 'addition':
+                    error_log("[REWARD SYSTEM] Routing to addition reward handler");
+                    $result = grant_addition_reward($student_post_id, $reward_data, $reward_id);
+                    break;
 
-            case 'multiplication':
-                return grant_multiplication_reward($student_post_id, $reward_data, $reward_id, $reward_id);
+                case 'multiplication':
+                    error_log("[REWARD SYSTEM] Routing to multiplication reward handler");
+                    $result = grant_multiplication_reward($student_post_id, $reward_data, $reward_id);
+                    break;
 
-            case 'reload':
-                return grant_reload_reward($student_post_id, $reward_data, $reward_id);
+                case 'reload':
+                    error_log("[REWARD SYSTEM] Routing to reload reward handler");
+                    $result = grant_reload_reward($student_post_id, $reward_data, $reward_id);
+                    break;
 
-            default:
-                error_log("grant_reward: Unknown promotion type: " . $promotion_type);
-                return ['success' => false, 'message' => 'Unknown promotion type.'];
+                default:
+                    error_log("[REWARD SYSTEM] ERROR: Unknown promotion type: {$promotion_type}");
+                    $result = ['success' => false, 'message' => 'Unknown promotion type.'];
+            }
+
+            error_log("[REWARD SYSTEM] Reward processing result: " . print_r($result, true));
+            return $result;
+
+        } catch (Exception $e) {
+            error_log("[REWARD SYSTEM] EXCEPTION: " . $e->getMessage());
+            error_log("[REWARD SYSTEM] Stack trace: " . $e->getTraceAsString());
+            return ['success' => false, 'message' => 'An unexpected error occurred'];
         }
     }
+endif;
 
-
-    if( ! function_exists('grant_addition_reward') ) :
+if( ! function_exists('grant_addition_reward') ) :
     /**
      * Grants an addition-based reward.
      *
@@ -1033,53 +1059,61 @@ if (!function_exists('grant_reward')) :
      *
      * @return array An array containing success status and updated data.
      */
-        function grant_addition_reward($student_post_id, $reward_data, $reward_id) {
-        error_log("grant_addition_reward: Applying Addition-Based Reward.");
+    function grant_addition_reward($student_post_id, $reward_data, $reward_id) {
+        error_log("[REWARD SYSTEM] === STARTING ADDITION REWARD PROCESS ===");
+        error_log("[REWARD SYSTEM] Student ID: {$student_post_id}, Reward ID: {$reward_id}");
 
+        // Get current balances
         $current_points = get_field('student_points', $student_post_id) ?: 0;
         $current_coins = get_field('student_coins', $student_post_id) ?: 0;
+        error_log("[REWARD SYSTEM] Current Balance - Points: {$current_points}, Coins: {$current_coins}");
 
+        // Calculate rewards
         $awarded_points = $reward_data['additional_reward'];
         $awarded_coins = ($reward_data['additional_type'] === 'both' || $reward_data['additional_type'] === 'coins')
             ? $reward_data['additional_reward']
             : 0;
 
+        error_log("[REWARD SYSTEM] Awarding - Points: {$awarded_points}, Coins: {$awarded_coins}");
+        error_log("[REWARD SYSTEM] Reward Type: " . $reward_data['additional_type']);
+
         $new_points = $current_points + $awarded_points;
         $new_coins = $current_coins + $awarded_coins;
+        error_log("[REWARD SYSTEM] New Balance - Points: {$new_points}, Coins: {$new_coins}");
 
-        error_log("grant_addition_reward: Awarded Points: " . $awarded_points . ", Awarded Coins: " . $awarded_coins);
-        error_log("grant_addition_reward: New Points: " . $new_points . ", New Coins: " . $new_coins);
-
+        // Update fields
         $points_updated = update_field('student_points', $new_points, $student_post_id);
         $coins_updated = update_field('student_coins', $new_coins, $student_post_id);
 
-        error_log("grant_addition_reward: Points Updated: " . ($points_updated ? 'true' : 'false') .
-            ", Coins Updated: " . ($coins_updated ? 'true' : 'false'));
-
         if (!$points_updated || !$coins_updated) {
-            error_log("grant_addition_reward: Failed to update point or coin fields.");
+            error_log("[REWARD SYSTEM] ERROR: Failed to update point or coin fields");
+            if (!$points_updated) error_log("[REWARD SYSTEM] Points update failed");
+            if (!$coins_updated) error_log("[REWARD SYSTEM] Coins update failed");
             return ['success' => false];
         }
+        error_log("[REWARD SYSTEM] Balance update successful");
 
-        // Add the last claim to the 'claimed_history' CPT
+        // Record reward claim
         $timestamp = date('Y-m-d H:i:s', current_time('timestamp'));
         $update_result = update_reward_claims($student_post_id, $reward_id, $timestamp);
+
         if (!$update_result) {
-            error_log("grant_addition_reward: Failed to update user_reward_history.");
-            return ['success' => false, 'message' => 'Failed to update reward history.'];
+            error_log("[REWARD SYSTEM] WARNING: Failed to update reward history, but reward was granted");
+        } else {
+            error_log("[REWARD SYSTEM] Reward history updated successfully");
         }
 
-        // Get the reward title
+        // Prepare notification
         $reward_title = get_the_title($reward_id);
+        $notification_message = '';
 
-        // Add notification
         if ($reward_data['additional_type'] === 'both') {
             $notification_message = sprintf(
                 'සුභ පැතුම්! ඔබ %s reward ය සඳහා සුදුසුකම් හිමි කරගෙන ඇති බැවින්, ඔබේ stars සහ coins එක් එක් %d කින් වැඩි වේ. ඒ අනුව,<br/>
                 නව coins ශේෂය: %d<br/>
                 නව stars ශේෂය: %d',
                 $reward_title,
-                $awarded_points, // Assuming points and coins have the same reward amount in 'both' case
+                $awarded_points,
                 $new_coins,
                 $new_points
             );
@@ -1111,13 +1145,17 @@ if (!function_exists('grant_reward')) :
             );
         }
 
+        error_log("[REWARD SYSTEM] Notification message prepared: " . substr($notification_message, 0, 100) . "...");
+
+        // Add notification
         $notification_added = add_notification_to_student_cpt($student_post_id, $notification_message);
-        error_log("grant_addition_reward: Notification added: " . ($notification_added ? 'true' : 'false'));
+        error_log("[REWARD SYSTEM] Notification added: " . ($notification_added ? 'true' : 'false'));
 
-        // Get updated unread notification count
-        $new_unread_count = get_student_unread_notification_count($student_post_id); // Helper function (assumed to exist)
-        error_log("grant_addition_reward: New Unread Notification Count: " . $new_unread_count);
+        // Get updated unread count
+        $new_unread_count = get_student_unread_notification_count($student_post_id);
+        error_log("[REWARD SYSTEM] New unread notification count: {$new_unread_count}");
 
+        error_log("[REWARD SYSTEM] === ADDITION REWARD PROCESS COMPLETED SUCCESSFULLY ===");
         return [
             'success'     => true,
             'points'      => $new_points,
@@ -1125,151 +1163,154 @@ if (!function_exists('grant_reward')) :
             'unread_count' => $new_unread_count,
         ];
     }
-    endif;
+endif;
 
-    if ( ! function_exists('grant_multiplication_reward') ) :
-        /**
-         * Grants a multiplication-based reward to a student based on completed quests.
-         *
-         * @param int   $student_post_id The Post ID of the student CPT.
-         * @param array $reward_data     Array of reward data.
-         * @param int   $reward_id       The Post ID of the reward CPT.
-         *
-         * @return array Response containing success status and result details.
-         */
-        function grant_multiplication_reward($student_post_id, $reward_data, $reward_id) {
-            error_log("grant_multiplication_reward: Starting for student $student_post_id and reward $reward_id");
+if ( ! function_exists('grant_multiplication_reward') ) :
+    /**
+     * Grants a multiplication-based reward to a student based on completed quests.
+     *
+     * @param int   $student_post_id The Post ID of the student CPT.
+     * @param array $reward_data     Array of reward data.
+     * @param int   $reward_id       The Post ID of the reward CPT.
+     *
+     * @return array Response containing success status and result details.
+     */
+    function grant_multiplication_reward($student_post_id, $reward_data, $reward_id) {
+        error_log("[REWARD SYSTEM] === STARTING MULTIPLICATION REWARD PROCESS ===");
+        error_log("[REWARD SYSTEM] Student ID: {$student_post_id}, Reward ID: {$reward_id}");
 
-            if (!$student_post_id || !$reward_id) {
-                return ['success' => false, 'message' => 'Missing required parameters'];
-            }
+        // Validate parameters
+        if (!$student_post_id || !$reward_id) {
+            error_log("[REWARD SYSTEM] ERROR: Missing required parameters");
+            return ['success' => false, 'message' => 'Missing required parameters'];
+        }
 
-            // Reward config
-            $multiplication_type = $reward_data['multiplication_type'] ?? 'both';
-            $multifaction_factor = max(0, floatval($reward_data['multifaction_factor'] ?? 1));
+        // Get reward configuration
+        $multiplication_type = $reward_data['multiplication_type'] ?? 'both';
+        $multifaction_factor = max(0, floatval($reward_data['multifaction_factor'] ?? 1));
+        error_log("[REWARD SYSTEM] Multiplication Type: {$multiplication_type}, Factor: {$multifaction_factor}");
 
-            error_log("grant_multiplication_reward: Type: $multiplication_type, Factor: $multifaction_factor");
+        // Validate reward period
+        $valid_from = get_field('valid_from', $reward_id);
+        $valid_until = get_field('valid_until', $reward_id);
 
-            // Time range
-            $valid_from = get_field('valid_from', $reward_id);
-            $valid_until = get_field('valid_until', $reward_id);
+        if (!$valid_from || !$valid_until) {
+            error_log("[REWARD SYSTEM] ERROR: Reward period not defined");
+            return ['success' => false, 'message' => 'Reward period is not defined.'];
+        }
 
-            if (!$valid_from || !$valid_until) {
-                return ['success' => false, 'message' => 'Reward period is not defined.'];
-            }
+        $start_time = strtotime($valid_from);
+        $end_time = strtotime($valid_until);
+        error_log("[REWARD SYSTEM] Valid Period: {$valid_from} to {$valid_until}");
 
-            $start_time = strtotime($valid_from);
-            $end_time = strtotime($valid_until);
+        // Get completed quests in period
+        $completed_quests = get_student_quest_history_in_range(
+            $student_post_id,
+            'completed',
+            $start_time,
+            $end_time
+        );
+        error_log("[REWARD SYSTEM] Found " . count($completed_quests) . " completed quests in period");
 
-            // Get completed quests with their rewards
-            $completed_quests = get_student_quest_history_in_range(
-                $student_post_id,
-                'completed',
-                $start_time,
-                $end_time
-            );
+        // Calculate total rewards from quests
+        $total_quest_points = 0;
+        $total_quest_coins = 0;
 
-            error_log("grant_multiplication_reward: Found " . count($completed_quests) . " completed quests");
-
-            $total_quest_points = 0;
-            $total_quest_coins = 0;
-
-            foreach ($completed_quests as $quest) {
-                if (isset($quest['reward_type'], $quest['reward_value'])) {
-                    if ($quest['reward_type'] === 'points') {
-                        $total_quest_points += (float)$quest['reward_value'];
-                    } elseif ($quest['reward_type'] === 'coins') {
-                        $total_quest_coins += (float)$quest['reward_value'];
-                    }
+        foreach ($completed_quests as $index => $quest) {
+            if (isset($quest['reward_type'], $quest['reward_value'])) {
+                if ($quest['reward_type'] === 'points') {
+                    $total_quest_points += (float)$quest['reward_value'];
+                } elseif ($quest['reward_type'] === 'coins') {
+                    $total_quest_coins += (float)$quest['reward_value'];
                 }
             }
-
-            error_log("grant_multiplication_reward: Total Points: $total_quest_points, Total Coins: $total_quest_coins");
-
-            // Get current student balance
-            $current_points = (int)get_field('student_points', $student_post_id);
-            $current_coins = (int)get_field('student_coins', $student_post_id);
-
-            // Calculate reward
-            $points_added = 0;
-            $coins_added = 0;
-
-            switch ($multiplication_type) {
-                case 'points':
-                    $points_added = $total_quest_points * ($multifaction_factor-1);
-                    break;
-                case 'coins':
-                    $coins_added = $total_quest_coins * ($multifaction_factor-1);
-                    break;
-                case 'both':
-                    $points_added = $total_quest_points * ($multifaction_factor-1);
-                    $coins_added = $total_quest_coins * ($multifaction_factor-1);
-                    break;
-            }
-
-            $new_points = $current_points + $points_added;
-            $new_coins = $current_coins + $coins_added;
-
-            error_log(sprintf(
-                "grant_multiplication_reward: New Points: %d (+%d), New Coins: %d (+%d)",
-                $new_points,
-                $points_added,
-                $new_coins,
-                $coins_added
-            ));
-
-            // Update balances
-            $points_updated = update_field('student_points', $new_points, $student_post_id);
-            $coins_updated = update_field('student_coins', $new_coins, $student_post_id);
-
-            if ( !$points_updated||!$coins_updated) {
-                error_log("grant_multiplication_reward: Failed to update point or coin fields");
-                return ['success' => false, 'message' => 'Failed to update balances'];
-            }
-
-            // Record redemption
-            $timestamp = date('Y-m-d H:i:s', current_time('timestamp'));
-            $update_result = update_reward_claims($student_post_id, $reward_id, $timestamp);
-
-            if (!$update_result) {
-                error_log("grant_multiplication_reward: Failed to update reward history");
-            }
-
-            // Add notification
-            $reward_title = get_the_title($reward_id);
-            // Add notification
-
-            $notification_message = sprintf(
-                'සුභ පැතුම්! ඔබ %s reward ය සඳහා සුදුසුකම් හිමි කරගෙන ඇති බැවින්, ඔබේ stars සහ coins  %d ගුණකයකින් වැඩි වේ. ඒ අනුව,<br/>
-                මුළු coins: %d<br/>
-                මුළු stars: %d<br/>
-                ඔබේ ගිණුමට එකතු වේ',
-                $reward_title,
-                $multifaction_factor,
-                $points_added,
-                $coins_added,
-
-            );
-
-            $notification_added = add_notification_to_student_cpt($student_post_id, $notification_message);
-            error_log("grant_multiplication_reward: Notification added: " . ($notification_added ? 'true' : 'false'));
-
-            return [
-                'success'      => true,
-                'points'       => $new_points,
-                'coins'        => $new_coins,
-                'points_added' => $points_added,
-                'coins_added'  => $coins_added,
-                'message'      => sprintf(
-                    'Reward applied! +%d points, +%d coins from played quests.',
-                    $points_added,
-                    $coins_added,
-                )
-            ];
+            error_log("[REWARD SYSTEM] Quest #{$index}: Type: {$quest['reward_type']}, Value: {$quest['reward_value']}");
         }
-    endif;
+        error_log("[REWARD SYSTEM] Total Quest Points: {$total_quest_points}, Total Quest Coins: {$total_quest_coins}");
 
-    if ( ! function_exists('grant_reload_reward') ) :
+        // Get current balances
+        $current_points = (int)get_field('student_points', $student_post_id);
+        $current_coins = (int)get_field('student_coins', $student_post_id);
+        error_log("[REWARD SYSTEM] Current Balance - Points: {$current_points}, Coins: {$current_coins}");
+
+        // Calculate rewards
+        $points_added = 0;
+        $coins_added = 0;
+
+        switch ($multiplication_type) {
+            case 'points':
+                $points_added = $total_quest_points * ($multifaction_factor-1);
+                break;
+            case 'coins':
+                $coins_added = $total_quest_coins * ($multifaction_factor-1);
+                break;
+            case 'both':
+                $points_added = $total_quest_points * ($multifaction_factor-1);
+                $coins_added = $total_quest_coins * ($multifaction_factor-1);
+                break;
+        }
+        error_log("[REWARD SYSTEM] Calculated Rewards - Points: +{$points_added}, Coins: +{$coins_added}");
+
+        $new_points = $current_points + $points_added;
+        $new_coins = $current_coins + $coins_added;
+        error_log("[REWARD SYSTEM] New Balance - Points: {$new_points}, Coins: {$new_coins}");
+
+        // Update balances
+        $points_updated = update_field('student_points', $new_points, $student_post_id);
+        $coins_updated = update_field('student_coins', $new_coins, $student_post_id);
+
+        if (!$points_updated || !$coins_updated) {
+            error_log("[REWARD SYSTEM] ERROR: Failed to update balances");
+            if (!$points_updated) error_log("[REWARD SYSTEM] Points update failed");
+            if (!$coins_updated) error_log("[REWARD SYSTEM] Coins update failed");
+            return ['success' => false, 'message' => 'Failed to update balances'];
+        }
+        error_log("[REWARD SYSTEM] Balances updated successfully");
+
+        // Record redemption
+        $timestamp = date('Y-m-d H:i:s', current_time('timestamp'));
+        $update_result = update_reward_claims($student_post_id, $reward_id, $timestamp);
+
+        if (!$update_result) {
+            error_log("[REWARD SYSTEM] WARNING: Failed to update reward history, but reward was granted");
+        } else {
+            error_log("[REWARD SYSTEM] Reward history updated successfully");
+        }
+
+        // Add notification
+        $reward_title = get_the_title($reward_id);
+        $notification_message = sprintf(
+            'සුභ පැතුම්! ඔබ %s reward ය සඳහා සුදුසුකම් හිමි කරගෙන ඇති බැවින්, ඔබේ stars සහ coins  %d ගුණකයකින් වැඩි වේ. ඒ අනුව,<br/>
+            මුළු coins: %d<br/>
+            මුළු stars: %d<br/>
+            ඔබේ ගිණුමට එකතු වේ',
+            $reward_title,
+            $multifaction_factor,
+            $points_added,
+            $coins_added
+        );
+        error_log("[REWARD SYSTEM] Notification message prepared: " . substr($notification_message, 0, 100) . "...");
+
+        $notification_added = add_notification_to_student_cpt($student_post_id, $notification_message);
+        error_log("[REWARD SYSTEM] Notification added: " . ($notification_added ? 'true' : 'false'));
+
+        error_log("[REWARD SYSTEM] === MULTIPLICATION REWARD PROCESS COMPLETED SUCCESSFULLY ===");
+        return [
+            'success'      => true,
+            'points'       => $new_points,
+            'coins'        => $new_coins,
+            'points_added' => $points_added,
+            'coins_added'  => $coins_added,
+            'message'      => sprintf(
+                'Reward applied! +%d points, +%d coins from played quests.',
+                $points_added,
+                $coins_added
+            )
+        ];
+    }
+endif;
+
+if ( ! function_exists('grant_reload_reward') ) :
     /**
      * Grants a reload-based reward.
      *
@@ -1280,47 +1321,59 @@ if (!function_exists('grant_reward')) :
      * @return array An array containing success status and updated data.
      */
     function grant_reload_reward($student_post_id, $reward_data, $reward_id) {
-        error_log("grant_reload_reward: Applying Reload-Based Reward.");
+        error_log("[REWARD SYSTEM] === STARTING RELOAD REWARD PROCESS ===");
+        error_log("[REWARD SYSTEM] Student ID: {$student_post_id}, Reward ID: {$reward_id}");
 
-
-        // Check if this is a confirmed request
+        // Check confirmation
         $is_confirmed = isset($_POST['confirmed']) && $_POST['confirmed'] === 'true';
 
         if (!$is_confirmed) {
+            error_log("[REWARD SYSTEM] ERROR: Reload request not confirmed");
             return [
                 'success' => false,
                 'message' => 'Reload request not confirmed'
             ];
         }
-        $current_coins = get_field('student_coins', $student_post_id) ?: 0;
+        error_log("[REWARD SYSTEM] Reload request confirmed");
 
-        if ($current_coins < $reward_data['required_coins']) {
-            error_log("grant_reload_reward: You don't have enough coins to redeem this reward.");
+        // Check coin balance
+        error_log("[REWARD SYSTEM] === STARTING ADDITION REWARD PROCESS ===");
+        error_log("[REWARD SYSTEM] Student ID: {$student_post_id}, Reward ID: {$reward_id}");
+
+        // Get current balances
+        $current_coins = get_field('student_coins', $student_post_id) ?: 0;
+        $required_coins = $reward_data['required_coins'];
+        error_log("[REWARD SYSTEM] Current Coins: {$current_coins}, Required: {$required_coins}");
+
+        if ($current_coins < $required_coins) {
+            error_log("[REWARD SYSTEM] ERROR: Insufficient coins balance");
             return [
                 'success' => false,
                 'message' => 'Insufficient coins balance',
             ];
         }
 
-        // Deduct coins
-        $new_coins = $current_coins - $reward_data['required_coins'];
+        // Process payment
+        $new_coins = $current_coins - $required_coins;
         $coins_updated = update_field('student_coins', $new_coins, $student_post_id);
 
         if (!$coins_updated) {
-            error_log("grant_reload_reward: Failed to update coin fields.");
+            error_log("[REWARD SYSTEM] ERROR: Failed to update coin balance");
             return [
                 'success' => false,
                 'message' => 'Failed to process payment',
             ];
         }
+        error_log("[REWARD SYSTEM] Payment processed successfully. New coin balance: {$new_coins}");
 
-        // Record the transaction
+        // Record transaction
         $timestamp = date('Y-m-d H:i:s', current_time('timestamp'));
         $update_result = update_reward_claims($student_post_id, $reward_id, $timestamp);
 
         if (!$update_result) {
-            error_log("grant_reload_reward: Failed to update reward history.");
-            // Still return success since reload was processed
+            error_log("[REWARD SYSTEM] WARNING: Failed to update reward history, but reload was processed");
+        } else {
+            error_log("[REWARD SYSTEM] Reward history updated successfully");
         }
 
         // Add notification
@@ -1328,18 +1381,24 @@ if (!function_exists('grant_reward')) :
             esc_html( points_plus_translate('Your redeem reward request for ₹%d worth of reload is submitted. It will be processed within 2-3 working days.') ),
             $reward_data['reload_value']
         );
-        add_notification_to_student_cpt($student_post_id, $notification_message);
+        error_log("[REWARD SYSTEM] Notification message prepared: " . substr($notification_message, 0, 100) . "...");
 
+        $notification_added = add_notification_to_student_cpt($student_post_id, $notification_message);
+        error_log("[REWARD SYSTEM] Notification added: " . ($notification_added ? 'true' : 'false'));
+
+        // Get updated unread count
+        $new_unread_count = get_student_unread_notification_count($student_post_id);
+        error_log("[REWARD SYSTEM] New unread notification count: {$new_unread_count}");
+
+        error_log("[REWARD SYSTEM] === RELOAD REWARD PROCESS COMPLETED SUCCESSFULLY ===");
         return [
             'success'     => true,
             'message'     => __('Reload processed successfully!', 'your-theme-text-domain'),
             'coins'       => $new_coins,
             'reload_value' => $reward_data['reload_value'],
-            'unread_count' => get_student_unread_notification_count($student_post_id),
+            'unread_count' => $new_unread_count,
         ];
     }
-endif;
-
 endif;
 
 if ( ! function_exists('get_student_quest_history_in_range') ) :

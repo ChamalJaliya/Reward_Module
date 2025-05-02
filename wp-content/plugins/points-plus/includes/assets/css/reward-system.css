@@ -245,3 +245,35 @@
 .clean-countdown-container[data-urgent="true"] .time-unit .value {
     color: #FF0000;
 }
+.no-promotions-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background-color: #f9f9f9;
+    border: 2px dashed #ccc;
+    border-radius: 12px;
+    margin: 2rem auto;
+    max-width: 600px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.no-promotions-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #ff9f43; /* Friendly orange */
+}
+
+.no-promotions-message h4 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.no-promotions-message p {
+    margin-top: 0.5rem;
+    font-size: 1rem;
+    color: #555;
+}

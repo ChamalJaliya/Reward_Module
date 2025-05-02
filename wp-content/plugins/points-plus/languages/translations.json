@@ -84,6 +84,6 @@
     "Reward claimed successfully!": "Reward ය සාර්ථකව හිමි විය!",
     "You earned %d points and %d coins!":"ඔබට උණුසුම් සුබ පැතුම්!.ඔබ stars %d ක් සහ coins %d ක් උපයා ගත්තා!",
     "Congratulations! You have completed the requirements for the %s reward, so your stars and coins will each be increased by %d. Accordingly,\n\nTotal Coins: %d\nTotal Stars: %d":"සුභ පැතුම්! ඔබ %s reward ය සඳහා සුදුසුකම් සම්පූර්ණ කර ඇති බැවින්, ඔබේ stars සහ coins එක් එක් %d කින් වැඩි වේ. ඒ අනුව,\\n\\nමුළු coins: %d\\nමුළු stars: %d\"",
-    "You earned %d points and %d coins from %d quests!": "ඔබ coins %d ක් සහ stars %dක් reward කාලය තුළ %d quests සම්පූර්ණ කිරීම මගින් උපයා ගත්තා!"
+    "You earned %d points and %d coins from played quests!": "ඔබ coins %d ක් සහ stars %dක් reward කාලය තුළ quests සම්පූර්ණ කිරීම මගින් උපයා ගත්තා!"
   }
 }

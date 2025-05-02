@@ -100,6 +100,11 @@ if (!function_exists('get_quests_needed_for_rule_display')) :
     function get_quests_needed_for_rule_display($student_id, $rule_id,$valid_from) {
         error_log("get_quests_needed_for_rule_display: Started for student: {$student_id}, rule: {$rule_id}");
         error_log("Calling get_quests_needed_for_rule_display with RULE: {$rule_id}, STUDENT: {$student_id}");
+        $rule_status = get_field('status', $rule_id);
+        if ($rule_status !== 'active') {
+            error_log("SKIP: Rule {$rule_id} is not active (status: {$rule_status})");
+            return []; // Return empty if inactive
+        }
         $conditions = get_field('conditions', $rule_id);
 
         // Debug: check if conditions are retrieved correctly
@@ -527,7 +532,14 @@ if (!function_exists('promotions_page_shortcode_function')) :
             }
             $output .= '</div>'; // Close promotions-grid
         } else {
-            $output .= '<p>No eligible promotions available at the moment.</p>';
+            $output .= '<div class="no-promotions-container">';
+            $output .= '<div class="no-promotions-icon">🎁</div>';
+            $output .= '<div class="no-promotions-message">';
+            $output .= '<h4>No promotions available right now</h4>';
+            $output .= '<p>Please check back later — new opportunities may be coming your way!</p>';
+            $output .= '</div>';
+            $output .= '</div>';
+
         }
 
         $output .= '</div>';
