@@ -10,34 +10,9 @@ if (!defined('ABSPATH')) {
 add_shortcode('notifications_list', 'pp_notifications_list_shortcode');
 
 function pp_notifications_list_shortcode() {
-    // Enqueue styles and scripts
-    $css_file = dirname(__FILE__) . '/../assets/css/notifications-list.css';
-    $css_url  = plugin_dir_url(__FILE__) . '../assets/css/notifications-list.css';
-    wp_enqueue_style('dashicons');
-    
-    if (file_exists($css_file)) {
-        wp_enqueue_style(
-            'pp-notifications-list',
-            $css_url,
-            array(),
-            filemtime($css_file)
-        );
-    }
-
-    $js_file = dirname(__FILE__) . '/../assets/js/notifications-list.js';
-    if (file_exists($js_file)) {
-        wp_enqueue_script(
-            'pp-notifications-list-js',
-            plugin_dir_url(__FILE__) . '../assets/js/notifications-list.js',
-            array('jquery'),
-            filemtime($js_file),
-            true
-        );
-    }
-
     // Hard-coded email (MUST replace with session logic later)
     $target_email = 'nipunchamika11@gmail.com';
-    
+
     // Get student post
     if (!function_exists('get_student_post_id_by_email')) {
         return '<p class="notifications-error">Missing helper function</p>';
@@ -99,7 +74,7 @@ function pp_notifications_list_shortcode() {
         $note = $sorted_note['data'];
         $original_index = $sorted_note['original_index'];
         $is_read = !empty($note['is_read']);
-        
+
         $classes = $is_read ? 'notification-item read' : 'notification-item unread';
         $date_str = '';
 
@@ -124,17 +99,17 @@ function pp_notifications_list_shortcode() {
 
     $output .= '</ul></div>';
 
-    wp_localize_script(
-        'pp-notifications-list-js',
-        'ppNotifications',
-        array(
-            'ajaxurl' => admin_url('admin-ajax.php'),
-            'student_id' => $student_id,
-            'nonce' => wp_create_nonce('pp_mark_notification_read'),
-            'no_notifications_message' => '<p class="notifications-none">You have no notifications right now. We\'ll notify you when there is something new.</p>'
-        )
-    );
-    
+    // wp_localize_script(
+    //     'pp-notifications-list-js',
+    //     'ppNotifications',
+    //     array(
+    //         'ajaxurl' => admin_url('admin-ajax.php'),
+    //         'student_id' => $student_id,
+    //         'nonce' => wp_create_nonce('pp_mark_notification_read'),
+    //         'no_notifications_message' => '<p class="notifications-none">You have no notifications right now. We\'ll notify you when there is something new.</p>'
+    //     )
+    // );
+
     return $output;
 }
 
@@ -172,7 +147,7 @@ function pp_ajax_mark_notification_read() {
         error_log('Student ID: ' . $student_id);
         error_log('Original Index: ' . $original_index);
         error_log('Current Field Values: ' . print_r(get_field('student_notifications', $student_id), true));
-        
+
         wp_send_json_error('Update failed');
     }
 }

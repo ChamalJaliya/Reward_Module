@@ -22,7 +22,7 @@
  * @since      1.0.0
  * @package    Points_Plus
  * @subpackage Points_Plus/includes
- * @author     Chamal <cjaliya.sln2@gmail.com>
+ * @author     Chamal <nipunchamika11@gmail.com>
  */
 class Points_Plus_i18n {
 

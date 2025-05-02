@@ -1,0 +1,130 @@
+.reward-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    font-family: Arial, sans-serif;
+}
+
+.reward-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.reward-modal-content {
+    position: relative;
+    z-index: 1001;
+    max-width: 400px;
+    margin: 100px auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+
+.reward-modal-header {
+    padding: 16px 20px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.reward-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+    font-weight: 600;
+}
+
+.reward-modal-close {
+    font-size: 24px;
+    cursor: pointer;
+    color: #6c757d;
+}
+
+.reward-modal-body {
+    padding: 20px;
+}
+
+.confirmation-message {
+    margin: 0 0 15px 0;
+    color: #333;
+    line-height: 1.5;
+    font-size: 15px;
+}
+
+.verify-message {
+    margin: 0 0 20px 0;
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.reward-details {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 15px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.detail-row:last-child {
+    margin-bottom: 0;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.detail-value {
+    color: #212529;
+}
+
+.reward-modal-footer {
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.reward-modal-cancel, .reward-modal-confirm {
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.reward-modal-cancel {
+    background: white;
+    border: 1px solid #ced4da;
+    color: #495057;
+}
+
+.reward-modal-cancel:hover {
+    background: #e9ecef;
+}
+
+.reward-modal-confirm {
+    background: #28a745;
+    color: white;
+}
+
+.reward-modal-confirm:hover {
+    background: #218838;
+}

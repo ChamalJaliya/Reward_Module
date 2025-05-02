@@ -408,7 +408,7 @@ if (!function_exists('promotions_page_shortcode_function')) :
                         $is_urgent = $total_hours_left < 24;
 
                         $output .= '<div class="clean-countdown-container" data-end-time="' . esc_attr($valid_until) . '" data-urgent="' . ($is_urgent ? 'true' : 'false') . '">';
-                        $output .= '<div class="time-left-header">Time Remaining:</div>';
+                        $output .= '<div class="time-left-header">ඉතිරි කාලය :</div>';
                         $output .= '<div class="time-units">';
                         if ($interval->d > 0) {
                             $output .= '<div class="time-unit days">';

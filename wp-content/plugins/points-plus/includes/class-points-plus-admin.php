@@ -19,7 +19,7 @@
  * @since      1.0.0
  * @package    Points_Plus
  * @subpackage Points_Plus/admin
- * @author     Chamal <cjaliya.sln2@gmail.com>
+ * @author     Chamal <nipunchamika11@gmail.com>
  */
 class Points_Plus_Admin {
 

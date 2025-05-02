@@ -156,13 +156,28 @@ function handle_hourly_export(): void {
         error_log('[PointsPlus] Retrieved ' . $row_count . ' rows for CSV. File: ' . $file);
 
         // 4) Send the email
-        $to = get_option('admin_email');
-        $subject = 'Hourly Pending Reloads Export — ' . date('Y-m-d H:i:s');
-        $body = "This is an automated email from the Points Plus system.\n\n";
-        $body .= "Pending reload redemptions as of " . date('Y-m-d H:i:s') . ":\n";
-        $body .= "- Total records: " . $row_count . "\n\n";
-        $body .= "— Differently.study";
-        $attachments = [$file];
+        // $to = get_option('admin_email');
+        // $subject = 'Hourly Pending Reloads Export — ' . date('Y-m-d H:i:s');
+        // $body = "This is an automated email from the Points Plus system.\n\n";
+        // $body .= "Pending reload redemptions as of " . date('Y-m-d H:i:s') . ":\n";
+        // $body .= "- Total records: " . $row_count . "\n\n";
+        // $body .= "— Differently.study";
+        // $attachments = [$file];
+
+        // Prepare context for template
+        $timestamp = date( 'Y-m-d H:i:s' );
+        $context = compact( 'row_count', 'timestamp' );
+
+        $context = [
+            'row_count' => $row_count,
+            'timestamp' => $timestamp,
+        ];
+
+        $to = get_option( 'admin_email' );
+        // $subject = 'Hourly Pending Reloads Export — ' . $timestamp;
+        $subject = \PointsPlus\Emails\get_email_subject('export-summary', [ 'timestamp' => $timestamp ]);
+        $body = \PointsPlus\Emails\get_email_body( 'export-summary', $context );
+        $attachments = [ $file ];
 
         try {
             $sent = wp_mail($to, $subject, $body, [], $attachments);

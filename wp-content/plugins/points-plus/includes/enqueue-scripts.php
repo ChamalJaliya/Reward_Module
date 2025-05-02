@@ -31,6 +31,22 @@ function points_plus_enqueue_scripts() {
             filemtime($plugin_path . $reward_css) // Version based on file modification time
         );
     }
+    $reward_modal_css = '/assets/css/reward-modal.css';
+    if (file_exists($plugin_path . $reward_modal_css)) {
+        wp_enqueue_style(
+            'points-plus-reward-modal-style',
+            $plugin_url . $reward_modal_css,
+            filemtime($plugin_path . $reward_modal_css)
+        );
+    }
+    $alert_css = '/assets/css/alert.css';
+    if (file_exists($plugin_path . $alert_css)) {
+        wp_enqueue_style(
+            'points-plus-alert-style',
+            $plugin_url . $alert_css,
+            filemtime($plugin_path . $alert_css)
+        );
+    }
 
     // Admin-specific CSS (only loads in admin)
     if (is_admin()) {
@@ -42,6 +58,23 @@ function points_plus_enqueue_scripts() {
                 array('dashicons'),
                 filemtime($plugin_path . $admin_css)
             );
+        }
+    }
+
+    // Only load the notifications list CSS on front-end singular pages that actually have the shortcode
+    if ( ! is_admin() && is_singular() ) {
+        global $post;
+        if ( isset( $post->post_content ) && has_shortcode( $post->post_content, 'notifications_list' ) ) { 
+            // Notifications list shortcode CSS
+            $notifications_css = '/assets/css/notifications-list.css';
+            if (file_exists($plugin_path . $notifications_css)) {
+                wp_enqueue_style(
+                    'points-plus-notifications-list',
+                    $plugin_url . $notifications_css,
+                    array('dashicons'),
+                    filemtime($plugin_path . $notifications_css)
+                );
+            }
         }
     }
 
@@ -60,7 +93,13 @@ function points_plus_enqueue_scripts() {
             true // Load in footer
         );
     }
-
+    wp_enqueue_script('your-plugin-script', plugin_dir_url(__FILE__) . 'js/your-script.js', ['jquery'], null, true);
+    wp_localize_script('your-plugin-script', 'reward_ajax_object', array(
+        'ajax_url' => admin_url('admin-ajax.php'),
+        'redeem_reward_nonce' => wp_create_nonce('redeem_reward_nonce'),
+        'get_reward_modal_nonce' => wp_create_nonce('get_reward_modal_nonce'), // Add this line
+        'student_identifier' => get_current_user_id(), // Or however you identify the student
+    ));
     // Reward Handler with AJAX localization
     $reward_js = '/assets/js/reward-handler.js';
     if (file_exists($plugin_path . $reward_js)) {
@@ -99,6 +138,41 @@ function points_plus_enqueue_scripts() {
                 filemtime($plugin_path . $admin_js),
                 true
             );
+        }
+    }
+
+    // Only load the notifications list JS on front-end singular pages that actually have the shortcode
+    if ( ! is_admin() && is_singular() ) {
+        global $post;
+        if ( isset( $post->post_content ) && has_shortcode( $post->post_content, 'notifications_list' ) ) {
+            // Notifications list shortcode JS
+            $notifications_js = '/assets/js/notifications-list.js';
+            if (file_exists($plugin_path . $notifications_js)) {
+                wp_enqueue_script(
+                    'points-plus-notifications-list-js',
+                    $plugin_url . $notifications_js,
+                    array('jquery'),
+                    filemtime($plugin_path . $notifications_js),
+                    true
+                );
+
+                // THIS SHOULD NOT HAPPEN
+                $target_email = 'nipunchamika11@gmail.com';
+                $student_id = 0;
+                if ( function_exists( 'get_student_post_id_by_email' ) ) {
+                    $student_id = get_student_post_id_by_email( $target_email );
+                }
+
+                wp_localize_script(
+                    'points-plus-notifications-list-js',
+                    'ppNotifications',
+                    array(
+                        'ajaxurl'    => admin_url( 'admin-ajax.php' ),
+                        'student_id' => intval( $student_id ),      // or your session‐logic
+                        'nonce'      => wp_create_nonce( 'pp_mark_notification_read' ),
+                    )
+                );
+            }
         }
     }
 }
