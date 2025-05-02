@@ -157,11 +157,9 @@ class Points_Plus {
 
         // Post Types
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/rewards.php';
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/quests.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/rules.php';
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/students.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/students-redeems.php';
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/post-types/student-quests.php';
+
 
 
 //         ACF Fields
@@ -182,9 +180,7 @@ class Points_Plus {
 
         // Shortcodes
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/rewards.php';
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/quests.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/rules.php';
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/students.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/promotions-list.php';
 
         $this->loader = new Points_Plus_Loader();

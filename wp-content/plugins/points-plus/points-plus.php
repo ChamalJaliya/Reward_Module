@@ -145,15 +145,6 @@ function points_plus_register_reward_post_type(): void {
     \PointsPlus\PostTypes\Rewards::register();
 }
 
-add_action( 'init', 'points_plus_register_quest_post_type' ); // Register Quest CPT
-/**
- * Registers the Quest custom post type.
- */
-function points_plus_register_quest_post_type(): void {
-    require_once plugin_dir_path( __FILE__ ) . 'includes/post-types/quests.php';
-    \PointsPlus\PostTypes\Quests::register(); // Call the function directly
-}
-
 add_action( 'init', 'points_plus_register_rule_post_type' );
 /**
  * Registers the Rule custom post type.
@@ -162,14 +153,7 @@ function points_plus_register_rule_post_type(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/post-types/rules.php';
     \PointsPlus\PostTypes\Rule_Builder::register();
 }
-add_action( 'init', 'points_plus_register_student_post_type' );
-/**
- * Registers the Student custom post type.
- */
-function points_plus_register_student_post_type(): void {
-    require_once plugin_dir_path( __FILE__ ) . 'includes/post-types/students.php';
-    \PointsPlus\PostTypes\Students::register();
-}
+
 add_action( 'init', 'points_plus_register_students_redeems_post_type' );
 /**
  * Registers the Students Redeems custom post type.
@@ -177,15 +161,6 @@ add_action( 'init', 'points_plus_register_students_redeems_post_type' );
 function points_plus_register_students_redeems_post_type(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/post-types/students-redeems.php';
     \PointsPlus\PostTypes\StudentsRedeems::register();
-}
-
-add_action( 'init', 'points_plus_register_student_quests_post_type' );
-/**
- * Registers the Students Quests custom post type.
- */
-function points_plus_register_student_quests_post_type(): void {
-    require_once plugin_dir_path( __FILE__ ) . 'includes/post-types/student-quests.php';
-    \PointsPlus\PostTypes\StudentQuests::register();
 }
 
 //add_action( 'init', 'points_plus_register_acf_fields' );
@@ -221,9 +196,7 @@ add_action( 'init', 'points_plus_register_shortcodes' );
  */
 function points_plus_register_shortcodes(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/rewards.php';
-    require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/quests.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/rules.php';
-    require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/students.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/promotions-list.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/shortcodes/notifications-list.php';
 }
