@@ -379,9 +379,9 @@ if (!function_exists('get_student_data_with_time_scope')) :
         if (in_array($field, ['points_balance', 'coins_balance'])) {
             switch ($field) {
                 case 'points_balance':
-                    return (int)(get_field('points', $student_id) ?: 0);
+                    return (int)(get_field('student_points', $student_id) ?: 0);
                 case 'coins_balance':
-                    return (int)(get_field('coins', $student_id) ?: 0);
+                    return (int)(get_field('student_coins', $student_id) ?: 0);
             }
         }
 
@@ -477,46 +477,70 @@ if (!function_exists('get_student_data_with_time_scope')) :
     }
 endif;
 
-
 if (!function_exists('get_student_quest_history')) :
     /**
-     * Gets the student's quest history.
+     * Gets the student's quest history from reward_history.
      *
      * @param int    $student_id      The ID of the student.
      * @param string $quest_count_type 'attempted' or 'completed'.
-     * @return array An array of quest history data.
+     * @return array An array of quest history data with timestamp and type.
      */
     function get_student_quest_history($student_id, $quest_count_type) {
-        $args = [
-            'post_type' => 'student_quests',
-            'numberposts' => -1, // Get all student_quests posts
-            'meta_query' => [
-                [
-                    'key' => 'student', // ACF field name for student relationship
-                    'value' => $student_id,
-                    'compare' => 'LIKE', // ACF relationship fields
-                ],
-            ],
-        ];
-
-        $student_quests = get_posts($args); // Get the student_quests posts
         $quest_history = [];
 
-        if ($student_quests) {
-            foreach ($student_quests as $student_quest) {
-                $progress_data = get_field('quest_progress', $student_quest->ID); // Get the repeater field
+        if ($quest_count_type === 'completed') {
+            $args = [
+                'post_type' => 'reward_history',
+                'posts_per_page' => -1,
+                'meta_query' => [
+                    'relation' => 'AND',
+                    [
+                        'key' => 'student',
+                        'value' => $student_id,
+                        'compare' => '='
+                    ],
+                    [
+                        'key' => 'key',
+                        'value' => 'played_quest',
+                        'compare' => '='
+                    ]
+                ]
+            ];
 
-                if (is_array($progress_data) && !empty($progress_data)) {
-                    foreach ($progress_data as $progress) {
-                        if (isset($progress['status']) && $progress['status'] == $quest_count_type && isset($progress['status_date'])) {
-                            $quest_history[] = [
-                                'timestamp' => $progress['status_date'],
-                                'quest_count_type' => $quest_count_type,
-                            ];
-                        }
-                    }
+            $reward_posts = get_posts($args);
+
+            foreach ($reward_posts as $post) {
+                $timestamp = get_the_date('Y-m-d H:i:s', $post->ID);
+                $quest_id = get_field('quest', $post->ID);
+
+                // Maintain same format as original function
+                $quest_history[] = [
+                    'timestamp' => $timestamp,
+                    'quest_count_type' => $quest_count_type,
+                    // Additional optional fields you might want to include
+                    'quest_id' => $quest_id,
+                    'type' => get_field('type', $post->ID),
+                    'value' => get_field('value', $post->ID)
+                ];
+            }
+
+            // If you need to deduplicate entries with same timestamp
+            $unique_history = [];
+            $seen_timestamps = [];
+
+            foreach ($quest_history as $entry) {
+                if (!in_array($entry['timestamp'], $seen_timestamps)) {
+                    $seen_timestamps[] = $entry['timestamp'];
+                    $unique_history[] = $entry;
                 }
             }
+
+            return $unique_history;
+        }
+        // For attempted quests (keep your existing implementation)
+        else if ($quest_count_type === 'attempted') {
+            // Your original attempted quests implementation here
+            // ...
         }
 
         return $quest_history;
@@ -708,20 +732,9 @@ if (!function_exists('handle_redeem_reward_ajax')) :
             }
             */
 
-            // 2. Validate student identifier
-            $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : '';
-            if (empty($student_identifier)) {
-                $response = add_system_message(
-                    $response,
-                    'Student email address is required.',
-                    'error',
-                    'MISSING_EMAIL'
-                );
-                throw new Exception('Student email address is required.');
-            }
-
             // 3. Find student post ID
-            $student_post_id = get_student_post_id_by_email($student_identifier);
+            $student_post_id = Points_Plus_Student_Data::get_current_student_id();
+
             if (!$student_post_id) {
                 $response = add_system_message(
                     $response,
@@ -834,7 +847,7 @@ if (!function_exists('handle_redeem_reward_ajax')) :
             // 7. Special handling for reload rewards requiring confirmation
             if ($reward_data['promotion_type'] === 'reload') {
                 error_log('handle_redeem_reward_ajax: Processing reload reward');
-                $phone_number = get_field('mobile_number', $student_post_id);
+                $phone_number = get_field('student_mobile', $student_post_id);
                 error_log('handle_redeem_reward_ajax: Phone Number:'  . print_r($phone_number, true));
                 $current_coins = get_field('coins', $student_post_id) ?: 0;
                 error_log('handle_redeem_reward_ajax: Current Coins:'  . print_r($current_coins, true));
@@ -980,7 +993,7 @@ if (!function_exists('grant_reward')) :
      *
      * @return array An array containing success status and updated data.
      */
-    function grant_reward($student_post_id, $reward_data, $reward_id) {
+        function grant_reward($student_post_id, $reward_data, $reward_id) {
         error_log("=== GRANT REWARD STARTED===");
         error_log("grant_reward: Function initiated for Student ID: " . $student_post_id .
             ", Reward Data: " . print_r($reward_data, true) .
@@ -1009,6 +1022,8 @@ if (!function_exists('grant_reward')) :
         }
     }
 
+
+    if( ! function_exists('grant_addition_reward') ) :
     /**
      * Grants an addition-based reward.
      *
@@ -1018,11 +1033,11 @@ if (!function_exists('grant_reward')) :
      *
      * @return array An array containing success status and updated data.
      */
-    function grant_addition_reward($student_post_id, $reward_data, $reward_id) {
+        function grant_addition_reward($student_post_id, $reward_data, $reward_id) {
         error_log("grant_addition_reward: Applying Addition-Based Reward.");
 
-        $current_points = get_field('points', $student_post_id) ?: 0;
-        $current_coins = get_field('coins', $student_post_id) ?: 0;
+        $current_points = get_field('student_points', $student_post_id) ?: 0;
+        $current_coins = get_field('student_coins', $student_post_id) ?: 0;
 
         $awarded_points = $reward_data['additional_reward'];
         $awarded_coins = ($reward_data['additional_type'] === 'both' || $reward_data['additional_type'] === 'coins')
@@ -1035,8 +1050,8 @@ if (!function_exists('grant_reward')) :
         error_log("grant_addition_reward: Awarded Points: " . $awarded_points . ", Awarded Coins: " . $awarded_coins);
         error_log("grant_addition_reward: New Points: " . $new_points . ", New Coins: " . $new_coins);
 
-        $points_updated = update_field('points', $new_points, $student_post_id);
-        $coins_updated = update_field('coins', $new_coins, $student_post_id);
+        $points_updated = update_field('student_points', $new_points, $student_post_id);
+        $coins_updated = update_field('student_coins', $new_coins, $student_post_id);
 
         error_log("grant_addition_reward: Points Updated: " . ($points_updated ? 'true' : 'false') .
             ", Coins Updated: " . ($coins_updated ? 'true' : 'false'));
@@ -1110,6 +1125,7 @@ if (!function_exists('grant_reward')) :
             'unread_count' => $new_unread_count,
         ];
     }
+    endif;
 
     if ( ! function_exists('grant_multiplication_reward') ) :
         /**
@@ -1145,25 +1161,34 @@ if (!function_exists('grant_reward')) :
             $start_time = strtotime($valid_from);
             $end_time = strtotime($valid_until);
 
-            // ✅ Get only quest_ids now
-            $quest_ids = get_completed_quest_ids_for_student($student_post_id, $start_time, $end_time);
+            // Get completed quests with their rewards
+            $completed_quests = get_student_quest_history_in_range(
+                $student_post_id,
+                'completed',
+                $start_time,
+                $end_time
+            );
 
-            error_log("grant_multiplication_reward: Found " . count($quest_ids) . " completed quest IDs");
+            error_log("grant_multiplication_reward: Found " . count($completed_quests) . " completed quests");
 
             $total_quest_points = 0;
             $total_quest_coins = 0;
 
-            foreach ($quest_ids as $quest_id) {
-                $rewards = get_quest_rewards($quest_id);
-                $total_quest_points += $rewards['points'];
-                $total_quest_coins += $rewards['coins'];
+            foreach ($completed_quests as $quest) {
+                if (isset($quest['reward_type'], $quest['reward_value'])) {
+                    if ($quest['reward_type'] === 'points') {
+                        $total_quest_points += (float)$quest['reward_value'];
+                    } elseif ($quest['reward_type'] === 'coins') {
+                        $total_quest_coins += (float)$quest['reward_value'];
+                    }
+                }
             }
 
             error_log("grant_multiplication_reward: Total Points: $total_quest_points, Total Coins: $total_quest_coins");
 
             // Get current student balance
-            $current_points = (int) get_field('points', $student_post_id);
-            $current_coins = (int) get_field('coins', $student_post_id);
+            $current_points = (int)get_field('student_points', $student_post_id);
+            $current_coins = (int)get_field('student_coins', $student_post_id);
 
             // Calculate reward
             $points_added = 0;
@@ -1194,13 +1219,11 @@ if (!function_exists('grant_reward')) :
             ));
 
             // Update balances
-            $points_updated = update_field('points', $new_points, $student_post_id);
-            $coins_updated = update_field('coins', $new_coins, $student_post_id);
+            $points_updated = update_field('student_points', $new_points, $student_post_id);
+            $coins_updated = update_field('student_coins', $new_coins, $student_post_id);
 
             if ( !$points_updated||!$coins_updated) {
                 error_log("grant_multiplication_reward: Failed to update point or coin fields");
-                error_log("Current points value: " . print_r(get_field('points', $student_post_id), true));
-                error_log("Current coins value: " . print_r(get_field('coins', $student_post_id), true));
                 return ['success' => false, 'message' => 'Failed to update balances'];
             }
 
@@ -1237,78 +1260,16 @@ if (!function_exists('grant_reward')) :
                 'coins'        => $new_coins,
                 'points_added' => $points_added,
                 'coins_added'  => $coins_added,
-                'quests_count' => count($quest_ids),
                 'message'      => sprintf(
-                    'Reward applied! +%d points, +%d coins from %d quests.',
+                    'Reward applied! +%d points, +%d coins from played quests.',
                     $points_added,
                     $coins_added,
-                    count($quest_ids)
                 )
             ];
         }
     endif;
 
-
-
-
-    /**
-     * Gets the student's quest history within a specified time range.
-     *
-     * @param int    $student_id      The ID of the student.
-     * @param string $quest_count_type 'attempted' or 'completed'.
-     * @param int    $start_time      Start timestamp.
-     * @param int    $end_time        End timestamp.
-     *
-     * @return array An array of quest history data with student_quest_id included.
-     */
-    function get_student_quest_history_in_range($student_id, $quest_count_type, $start_time, $end_time) {
-        error_log("get_student_quest_history_in_range: Searching for $quest_count_type quests for student $student_id between " . date('Y-m-d H:i:s', $start_time) . " and " . date('Y-m-d H:i:s', $end_time));
-
-        $args = [
-            'post_type'      => 'student_quests',
-            'posts_per_page' => -1,
-            'meta_query'     => [
-                [
-                    'key'     => 'student',
-                    'value'   => '"' . $student_id . '"',
-                    'compare' => 'LIKE'
-                ]
-            ]
-        ];
-
-        $student_quests = get_posts($args);
-        $quest_history = [];
-
-        if ($student_quests) {
-            foreach ($student_quests as $student_quest) {
-                $progress_data = get_field('quest_progress', $student_quest->ID);
-
-                if (is_array($progress_data)) {
-                    foreach ($progress_data as $progress) {
-                        if (isset($progress['status'], $progress['status_date']) &&
-                            $progress['status'] === $quest_count_type) {
-
-                            $status_date = strtotime($progress['status_date']);
-                            if ($status_date >= $start_time && $status_date <= $end_time) {
-
-                                $quest_history[] = [
-                                    'timestamp'         => $progress['status_date'],
-                                    'quest_count_type' => $quest_count_type,
-                                    'student_quest_id' => $student_quest->ID,
-                                    'quest_id' => array_values((array) get_field('quest', $student_quest->ID))[0] ?? null // Get quest ID directly
-                                ];
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        error_log("get_student_quest_history_in_range: Found " . count($quest_history) . " matching quests");
-//        error_log("get_student_quest_history_in_range: Quest History Data: " . print_r($quest_history, true));
-        return $quest_history;
-    }
-
+    if ( ! function_exists('grant_reload_reward') ) :
     /**
      * Grants a reload-based reward.
      *
@@ -1331,7 +1292,7 @@ if (!function_exists('grant_reward')) :
                 'message' => 'Reload request not confirmed'
             ];
         }
-        $current_coins = get_field('coins', $student_post_id) ?: 0;
+        $current_coins = get_field('student_coins', $student_post_id) ?: 0;
 
         if ($current_coins < $reward_data['required_coins']) {
             error_log("grant_reload_reward: You don't have enough coins to redeem this reward.");
@@ -1343,7 +1304,7 @@ if (!function_exists('grant_reward')) :
 
         // Deduct coins
         $new_coins = $current_coins - $reward_data['required_coins'];
-        $coins_updated = update_field('coins', $new_coins, $student_post_id);
+        $coins_updated = update_field('student_coins', $new_coins, $student_post_id);
 
         if (!$coins_updated) {
             error_log("grant_reload_reward: Failed to update coin fields.");
@@ -1352,21 +1313,6 @@ if (!function_exists('grant_reward')) :
                 'message' => 'Failed to process payment',
             ];
         }
-
-        // Process the reload (this would call your actual reload API)
-        //        $reload_processed = process_mobile_reload(
-        //            get_field('mobile_number', $student_post_id),
-        //            $reward_data['reload_value']
-        //        );
-        //
-        //        if (!$reload_processed) {
-        //            // Refund coins if reload failed
-        //            update_field('coins', $current_coins, $student_post_id);
-        //            return [
-        //                'success' => false,
-        //                'message' => 'Reload processing failed. Coins have been refunded.',
-        //            ];
-        //        }
 
         // Record the transaction
         $timestamp = date('Y-m-d H:i:s', current_time('timestamp'));
@@ -1394,55 +1340,69 @@ if (!function_exists('grant_reward')) :
     }
 endif;
 
-if ( ! function_exists('get_quest_rewards') ) :
-    /**
-     * Get quest reward details by quest ID.
-     *
-     * @param int $quest_id The ID of the quest post.
-     * @return array An array with 'points' and 'coins' as integers.
-     */
-    function get_quest_rewards($quest_id) {
-        if (!$quest_id || get_post_type($quest_id) !== 'quest') {
-            error_log("get_quest_rewards: Invalid quest ID $quest_id");
-            return ['points' => 0, 'coins' => 0];
-        }
-
-        $points = (int) get_field('points_reward', $quest_id);
-        $coins = (int) get_field('coins_reward', $quest_id);
-
-        $title = get_the_title($quest_id);
-        error_log("get_quest_rewards: Quest ID: $quest_id | Title: $title | Points: $points | Coins: $coins");
-
-        return ['points' => $points, 'coins' => $coins];
-    }
 endif;
 
-if ( ! function_exists('get_completed_quest_ids_for_student') ) :
+if ( ! function_exists('get_student_quest_history_in_range') ) :
     /**
-     * Get array of quest IDs completed by student in given range.
+     * Gets the student's quest history within a specified time range.
      *
-     * @param int $student_id
-     * @param int $start_time Timestamp
-     * @param int $end_time Timestamp
-     * @return array Array of unique quest IDs
+     * @param int    $student_id      The ID of the student.
+     * @param string $quest_count_type 'attempted' or 'completed'.
+     * @param int    $start_time      Start timestamp.
+     * @param int    $end_time        End timestamp.
+     *
+     * @return array An array of quest history data with student_quest_id included.
      */
-    function get_completed_quest_ids_for_student($student_id, $start_time, $end_time) {
-        $quests_data = get_student_quest_history_in_range(
-            $student_id,
-            'completed',
-            $start_time,
-            $end_time
-        );
+    function get_student_quest_history_in_range($student_id, $quest_count_type, $start_time, $end_time) {
+        error_log("get_student_quest_history_in_range: Searching for $quest_count_type quests for student $student_id between " .
+            date('Y-m-d H:i:s', $start_time) . " and " . date('Y-m-d H:i:s', $end_time));
 
-        $quest_ids = [];
+        $args = [
+            'post_type'      => 'reward_history',
+            'posts_per_page' => -1,
+            'date_query'    => [
+                [
+                    'after'     => date('Y-m-d H:i:s', $start_time),
+                    'before'    => date('Y-m-d H:i:s', $end_time),
+                    'inclusive' => true
+                ]
+            ],
+            'meta_query'     => [
+                'relation' => 'AND',
+                [
+                    'key'     => 'student',
+                    'value'   => $student_id,
+                    'compare' => '='
+                ],
+                [
+                    'key'     => 'key',
+                    'value'   => 'played_quest',
+                    'compare' => '='
+                ]
+            ]
+        ];
 
-        foreach ($quests_data as $entry) {
-            $quest_id = $entry['quest_id'];
-            $quest_ids[] = $quest_id;
+        $reward_posts = get_posts($args);
+        $quest_history = [];
+
+        foreach ($reward_posts as $post) {
+            $post_date = strtotime($post->post_date);
+
+            // Only include if within our time range (double-checking)
+            if ($post_date >= $start_time && $post_date <= $end_time) {
+                $quest_history[] = [
+                    'timestamp'         => $post->post_date,
+                    'quest_count_type' => 'completed', // All reward_history entries are completed
+                    'student_quest_id' => $post->ID,  // Using reward_history post ID instead
+                    'quest_id'         => get_field('quest', $post->ID), // Get the associated quest ID
+                    'reward_type'      => get_field('type', $post->ID),  // Additional reward info
+                    'reward_value'      => get_field('value', $post->ID)   // Additional reward info
+                ];
+            }
         }
 
-        return array_unique($quest_ids);
-
+        error_log("get_student_quest_history_in_range: Found " . count($quest_history) . " matching quest completions");
+        return $quest_history;
     }
 endif;
 
@@ -1474,7 +1434,7 @@ if (!function_exists('add_notification_to_student_cpt')) :
 
         // Add the new notification as an array matching sub-field keys
         $notifications[] = [
-            'message' => __($message, 'twentytwentyfive'),
+            'message' => $message,
             'is_read' => false, // Or 0, depending on ACF True/False return format
             'timestamp' => current_time('mysql'),
             // 'link' => '', // Optional: Add a link if needed
@@ -1612,7 +1572,7 @@ if (!function_exists('confirm_reload_reward')) :
      */
     function confirm_reload_reward($student_post_id, $reward_data) {
         // Get student's phone number
-        $phone_number = get_field('mobile_number', $student_post_id);
+        $phone_number = get_field('student_number', $student_post_id);
 
         if (empty($phone_number)) {
             return [
@@ -1622,7 +1582,7 @@ if (!function_exists('confirm_reload_reward')) :
         }
 
         // Verify sufficient coin balance
-        $current_coins = get_field('coins', $student_post_id) ?: 0;
+        $current_coins = get_field('student_coins', $student_post_id) ?: 0;
         if ($current_coins < $reward_data['required_coins']) {
             return [
                 'success' => false,

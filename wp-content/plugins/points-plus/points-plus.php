@@ -122,6 +122,7 @@ function points_plus_translate( $text, $locale = 'si_LK' ) {
  * The core plugin class that is used to define internationalization,
  * admin-specific hooks, and public-facing site hooks.
  */
+require_once plugin_dir_path(__FILE__) . 'includes/init.php';
 require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus.php';
 require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-api.php'; // Include API handler
 require plugin_dir_path( __FILE__ ) . 'includes/class-points-plus-rule-engine.php'; // Include Rule Engine
@@ -207,11 +208,9 @@ add_action( 'init', 'points_plus_register_admin_tables' );
  */
 function points_plus_register_admin_tables(): void {
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/rewards-table.php';
-    require_once plugin_dir_path( __FILE__ ) . 'includes/admin/quests-table.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/rules-table.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/students-table.php';
     require_once plugin_dir_path( __FILE__ ) . 'includes/admin/students-redeems-table.php';
-    require_once plugin_dir_path( __FILE__ ) . 'includes/admin/student-quests-table.php';
     require_once plugin_dir_path(__FILE__) . 'includes/hooks/student-redeems-title.php';
     require_once plugin_dir_path(__FILE__) . 'includes/admin/students-redeems-export-handler.php';
 }

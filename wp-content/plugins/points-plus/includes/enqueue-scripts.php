@@ -16,6 +16,7 @@ function points_plus_enqueue_scripts() {
     // Get plugin directory URL and path
     $plugin_url = plugin_dir_url(__FILE__);
     $plugin_path = plugin_dir_path(__FILE__);
+    $student_data = Points_Plus_Student_Data::get_current_student();
 
     // ======================
     // 1. Enqueue CSS Styles
@@ -81,7 +82,8 @@ function points_plus_enqueue_scripts() {
         'ajax_url' => admin_url('admin-ajax.php'),
         'redeem_reward_nonce' => wp_create_nonce('redeem_reward_nonce'),
         'get_reward_modal_nonce' => wp_create_nonce('get_reward_modal_nonce'), // Add this line
-        'student_identifier' => get_current_user_id(), // Or however you identify the student
+        'student_data' => $student_data,
+        'student_identifier' => $student_data ? $student_data['id'] : '',
     ));
     // Reward Handler with AJAX localization
     $reward_js = '/assets/js/reward-handler.js';
@@ -93,6 +95,10 @@ function points_plus_enqueue_scripts() {
             filemtime($plugin_path . $reward_js),
             true
         );
+        $student_data = [];
+        if (function_exists('ms_get_current_student_data')) {
+            $student_data = ms_get_current_student_data();
+        }
 
         wp_localize_script(
             'points-plus-reward-handler',
@@ -101,7 +107,8 @@ function points_plus_enqueue_scripts() {
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'redeem_reward_nonce' => wp_create_nonce('redeem_reward_nonce'),
                 'daily_reward_nonce' => wp_create_nonce('daily_reward_nonce'),
-                'student_identifier' => is_user_logged_in() ? wp_get_current_user()->user_email : '',
+                'student_data' => $student_data,
+                'student_identifier' => $student_data ? $student_data['id'] : '',
                 'i18n' => array(
                     'error_message' => __('An error occurred. Please try again.', 'points-plus'),
                     'success_message' => __('Action completed successfully!', 'points-plus')

@@ -35,8 +35,8 @@ add_action('wp_ajax_nopriv_fetch_student_notifications', 'fetch_student_notifica
 
 if (!function_exists('fetch_student_notifications_ajax')) :
     function fetch_student_notifications_ajax() {
-        $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : 'cjaliya.sln2@gmail.com';
-        $student_post_id = get_student_post_id_by_email($student_identifier);
+//        $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : 'cjaliya.sln2@gmail.com';
+        $student_post_id = Points_Plus_Student_Data::get_current_student_id();;
 
         if (!$student_post_id || !function_exists('get_field')) {
             wp_send_json_error(['message' => 'Could not find student or ACF.']);
@@ -72,11 +72,10 @@ add_action('wp_ajax_nopriv_mark_notification_read', 'mark_notification_read_ajax
 
 if (!function_exists('mark_notification_read_ajax')) :
     function mark_notification_read_ajax() {
-        $student_identifier = isset($_POST['student_identifier']) ? sanitize_email($_POST['student_identifier']) : 'cjaliya.sln2@gmail.com';
         $notification_index = isset($_POST['notification_index']) ? intval($_POST['notification_index']) : -1;
         $mark_all = isset($_POST['mark_all']) && $_POST['mark_all'] === 'true';
 
-        $student_post_id = get_student_post_id_by_email($student_identifier);
+        $student_post_id = Points_Plus_Student_Data::get_current_student_id();
 
         if (!$student_post_id || !function_exists('get_field')) {
             wp_send_json_error(['message' => 'Could not find student or ACF.']);

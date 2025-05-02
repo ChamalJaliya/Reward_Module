@@ -176,11 +176,9 @@ class Points_Plus {
 
         // Admin
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/rewards-table.php';
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/quests-table.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/rules-table.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/students-table.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/students-redeems-table.php';
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/student-quests-table.php';
 
         // Shortcodes
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/shortcodes/rewards.php';

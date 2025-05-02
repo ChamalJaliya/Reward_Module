@@ -36,13 +36,12 @@ function pp_notifications_list_shortcode() {
     }
 
     // Hard-coded email (MUST replace with session logic later)
-    $target_email = 'cjaliya.sln2@gmail.com';
 
     // Get student post
     if (!function_exists('get_student_post_id_by_email')) {
         return '<p class="notifications-error">Missing helper function</p>';
     }
-    $student_id = get_student_post_id_by_email($target_email);
+    $student_id = Points_Plus_Student_Data::get_current_student_id();;
     if (!$student_id) {
         return '<p class="notifications-none">No student found.</p>';
     }

@@ -5,7 +5,8 @@
 
 if (!function_exists('count_all_completed_quests')) :
     /**
-     * Counts all completed quests for a student.
+     * Counts all completed quests for a student from reward_history.
+     * Groups entries with identical timestamps as single quest completions.
      *
      * @param int $student_id The ID of the student.
      * @return int The total number of completed quests.
@@ -14,33 +15,42 @@ if (!function_exists('count_all_completed_quests')) :
         error_log("count_all_completed_quests: Started for student: {$student_id}");
 
         $args = [
-            'post_type'   => 'student_quests',
-            'numberposts' => -1,
-            'meta_query'  => [
+            'post_type'      => 'reward_history',
+            'posts_per_page' => -1,
+            'meta_query'     => [
+                'relation' => 'AND',
                 [
-                    'key'   => 'student',
-                    'value' => $student_id,
-                    'compare' => 'LIKE'
+                    'key'     => 'student',
+                    'value'   => $student_id,
+                    'compare' => '='
                 ],
+                [
+                    'key'     => 'key',
+                    'value'   => 'played_quest',
+                    'compare' => '='
+                ]
             ],
+            'orderby' => 'date',
+            'order'   => 'ASC'
         ];
 
-        $student_quests = get_posts($args);
-        $completed_count = 0;
-        error_log("count_all_completed_quests: Found " . count($student_quests) . " student_quests posts.");
+        $reward_posts = get_posts($args);
+        error_log("count_all_completed_quests: Found " . count($reward_posts) . " reward_history posts.");
 
-        foreach ($student_quests as $student_quest) {
-            $progress_data = get_field('quest_progress', $student_quest->ID);
-            if (is_array($progress_data)) {
-                foreach ($progress_data as $progress) {
-                    if (isset($progress['status']) && $progress['status'] === 'completed') {
-                        $completed_count++;
-                    }
-                }
+        $unique_timestamps = [];
+        $completed_count = 0;
+
+        foreach ($reward_posts as $post) {
+            $timestamp = $post->post_date; // Using post_date as the timestamp
+
+            if (!in_array($timestamp, $unique_timestamps)) {
+                $unique_timestamps[] = $timestamp;
+                $completed_count++;
+                error_log("count_all_completed_quests: New unique completion at {$timestamp}");
             }
         }
 
-        error_log("count_all_completed_quests: Completed quests count: {$completed_count}");
+        error_log("count_all_completed_quests: Unique completed quests count: {$completed_count}");
         return $completed_count;
     }
 endif;
@@ -211,11 +221,10 @@ add_shortcode('promotions_list', 'promotions_page_shortcode_function');
 
 if (!function_exists('promotions_page_shortcode_function')) :
     function promotions_page_shortcode_function() {
-        $target_email = 'cjaliya.sln2@gmail.com'; // IMPORTANT:  Dynamically get logged-in user's email
         $student_post_id = 0;
 
         try {
-            $student_post_id = get_student_post_id_by_email($target_email); // Use the helper function
+            $student_post_id = Points_Plus_Student_Data::get_current_student_id(); // Use the helper function
             if (!$student_post_id) {
                 return '<p>Error: Could not find student data.</p>';
             }
@@ -229,8 +238,8 @@ if (!function_exists('promotions_page_shortcode_function')) :
         }
 
         $output = '<div class="promotions-page">';
-        $points = get_field('points', $student_post_id) ?: 0;
-        $coins = get_field('coins', $student_post_id) ?: 0;
+        $points = get_field('student_points', $student_post_id) ?: 0;
+        $coins = get_field('student_coins', $student_post_id) ?: 0;
 
         $now = current_time('Y-m-d H:i:s');
 

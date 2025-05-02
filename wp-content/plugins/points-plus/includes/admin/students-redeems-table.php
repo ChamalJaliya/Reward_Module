@@ -89,7 +89,7 @@ class StudentsRedeems_Table {
                     break;
                 }
 
-                $mobile = get_field('mobile_number', $student);
+                $mobile = get_field('student_mobile', $student);
                 echo $mobile ? esc_html($mobile) : '—';
                 break;
 
@@ -420,7 +420,7 @@ add_action('wp_ajax_update_students_redeems_status', function () {
 
             // Now fetch the e‑mail
              $student_email = get_field('email', $student_id);
-//            $student_email = 'nipunchamika11@gmail.com';
+
             if (! is_email($student_email)) {
                 error_log("PP-ERROR: No valid student e-mail for post {$post_id} (student_id={$student_id})");
             } else {
@@ -467,7 +467,6 @@ add_action('wp_ajax_update_students_redeems_status', function () {
 
             // Now fetch the e‑mail
              $student_email = get_field('email', $student_id);
-//            $student_email = 'nipunchamika11@gmail.com';
 
             // $subject = 'Your reload request failed';
             $subject = \PointsPlus\Emails\get_email_subject('reload-failed');
@@ -479,8 +478,8 @@ add_action('wp_ajax_update_students_redeems_status', function () {
             if ($sent) {
                 error_log("PP: wp_mail SUCCESS for failed-notification on post {$post_id}");
                 // refund coins only when mail succeeded
-                $currentCoins = intval(get_field('coins', $student_id));
-                update_field('coins', $currentCoins + $coins_cost, $student_id);
+                $currentCoins = intval(get_field('student_coins', $student_id));
+                update_field('student_coins', $currentCoins + $coins_cost, $student_id);
                 update_post_meta($post_id, '_email_sent', '1');
             } else {
                 error_log("PP-ERROR: wp_mail FAILED for failed-notification on post {$post_id}. To={$student_email}");
