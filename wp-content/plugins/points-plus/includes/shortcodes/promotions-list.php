@@ -221,7 +221,89 @@ add_shortcode('promotions_list', 'promotions_page_shortcode_function');
 
 if (!function_exists('promotions_page_shortcode_function')) :
     function promotions_page_shortcode_function() {
+
         $student_post_id = 0;
+        $student_data = Points_Plus_Student_Data::get_current_student();
+        $plugin_url = plugin_dir_url(__FILE__) . '../'; // Points to the plugin root URL
+        $plugin_path = plugin_dir_path(__FILE__) . '../'; // Points to the plugin root server path
+
+        $reward_css = '/assets/css/reward-system.css';
+        if (file_exists($plugin_path . $reward_css)) {
+            wp_enqueue_style(
+                'points-plus-reward-style',
+                $plugin_url . $reward_css,
+                array('dashicons'), // Dashicons dependency
+                filemtime($plugin_path . $reward_css) // Version based on file modification time
+            );
+        }
+        $reward_modal_css = '/assets/css/reward-modal.css';
+        if (file_exists($plugin_path . $reward_modal_css)) {
+            wp_enqueue_style(
+                'points-plus-reward-modal-style',
+                $plugin_url . $reward_modal_css,
+                filemtime($plugin_path . $reward_modal_css)
+            );
+        }
+        $alert_css = '/assets/css/alert.css';
+        if (file_exists($plugin_path . $alert_css)) {
+            wp_enqueue_style(
+                'points-plus-alert-style',
+                $plugin_url . $alert_css,
+                filemtime($plugin_path . $alert_css)
+            );
+        }
+
+
+        $countdown_js = '/assets/js/countdown-timer.js';
+        if (file_exists($plugin_path . $countdown_js)) {
+            wp_enqueue_script(
+                'points-plus-countdown-timer',
+                $plugin_url . $countdown_js,
+                array('jquery'), // jQuery dependency
+                filemtime($plugin_path . $countdown_js),
+                true // Load in footer
+            );
+        }
+        wp_enqueue_script('your-plugin-script', plugin_dir_url(__FILE__) . 'js/your-script.js', ['jquery'], null, true);
+        wp_localize_script('your-plugin-script', 'reward_ajax_object', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'redeem_reward_nonce' => wp_create_nonce('redeem_reward_nonce'),
+            'get_reward_modal_nonce' => wp_create_nonce('get_reward_modal_nonce'), // Add this line
+            'student_data' => $student_data,
+            'student_identifier' => $student_data ? $student_data['id'] : '',
+        ));
+        // Reward Handler with AJAX localization
+        $reward_js = '/assets/js/reward-handler.js';
+        if (file_exists($plugin_path . $reward_js)) {
+            wp_enqueue_script(
+                'points-plus-reward-handler',
+                $plugin_url . $reward_js,
+                array('jquery'),
+                filemtime($plugin_path . $reward_js),
+                true
+            );
+            $student_data = [];
+            if (function_exists('ms_get_current_student_data')) {
+                $student_data = ms_get_current_student_data();
+            }
+
+            wp_localize_script(
+                'points-plus-reward-handler',
+                'reward_ajax_object',
+                array(
+                    'ajax_url' => admin_url('admin-ajax.php'),
+                    'redeem_reward_nonce' => wp_create_nonce('redeem_reward_nonce'),
+                    'daily_reward_nonce' => wp_create_nonce('daily_reward_nonce'),
+                    'student_data' => $student_data,
+                    'student_identifier' => $student_data ? $student_data['id'] : '',
+                    'i18n' => array(
+                        'error_message' => __('An error occurred. Please try again.', 'points-plus'),
+                        'success_message' => __('Action completed successfully!', 'points-plus')
+                    )
+                )
+            );
+        }
+
 
         try {
             $student_post_id = Points_Plus_Student_Data::get_current_student_id(); // Use the helper function
@@ -236,6 +318,7 @@ if (!function_exists('promotions_page_shortcode_function')) :
         } catch (Exception $e) {
             return '<p>Error: ' . $e->getMessage() . '</p>';
         }
+
 
         $output = '<div class="promotions-page">';
         $points = get_field('student_points', $student_post_id) ?: 0;

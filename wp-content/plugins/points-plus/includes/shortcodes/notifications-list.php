@@ -35,8 +35,6 @@ function pp_notifications_list_shortcode() {
         );
     }
 
-    // Hard-coded email (MUST replace with session logic later)
-
     // Get student post
     if (!function_exists('get_student_post_id_by_email')) {
         return '<p class="notifications-error">Missing helper function</p>';
