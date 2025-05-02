@@ -36,13 +36,6 @@ class StudentsRedeems_Table {
                 echo $student_id ? esc_html( get_the_title( $student_id ) ) : '—';
                 break;
 
-            // case 'student_id':
-            //     // just the raw ID
-            //     $student_id = get_field('student', $post_id);
-            //     if (is_array($student_id)) $student_id = $student_id[0] ?? null; // In case multiple are allowed
-            //     echo $student_id ? intval( $student_id ) : '—';
-            //     break;
-
             case 'student_id':
                 $student = get_field('student', $post_id);
 
@@ -105,28 +98,6 @@ class StudentsRedeems_Table {
                 echo $claimed ? date('Y-m-d H:i', strtotime($claimed)) : '—';
                 break;
 
-            // case 'status':
-            //     $status = get_field('status', $post_id);
-            //     echo $status ? ucfirst($status) : '—';
-            //     break;
-
-            // // Working
-            // case 'status':
-            //     $status = get_field('status', $post_id);
-            //     $options = ['pending', 'processed', 'completed', 'failed'];
-
-            //     echo '<select class="redeem-status-dropdown" data-id="' . esc_attr($post_id) . '">';
-            //     foreach ($options as $option) {
-            //         printf(
-            //             '<option value="%1$s"%2$s>%3$s</option>',
-            //             esc_attr($option),
-            //             selected($status, $option, false),
-            //             ucfirst($option)
-            //         );
-            //     }
-            //     echo '</select>';
-            //     break;
-
             case 'email_sent':
                 // figure out the linked reward ID
                 $reward_raw = get_field('reward_item', $post_id);
@@ -167,31 +138,6 @@ class StudentsRedeems_Table {
                     echo ucfirst( $status );
                     break;
                 }
-
-                // if ( $email_sent === '1' && $status !== 'pending' ) {
-                //     echo ucfirst( $status );
-                //     break;
-                // }
-
-                // // figure out promotion type on the linked reward
-                // $reward_raw  = get_field('reward_item', $post_id);
-
-                // if (is_array($reward_raw)) {
-                //     $first = reset($reward_raw);
-                //     $reward_id = is_object($first) ? intval($first->ID) : intval($first);
-                // } elseif (is_object($reward_raw) && isset($reward_raw->ID)) {
-                //     $reward_id = intval($reward_raw->ID);
-                // } else {
-                //     $reward_id = intval($reward_raw);
-                // }
-                // $promo_type = get_field('promotion_type', $reward_id);
-
-                // // if this is a reload‐based promo, email already went out, and status is no longer pending, just display status
-                // if ( $promo_type === 'reload' && $email_sent === '1' && $status !== 'pending') {
-                //     // …just show the text and skip the <select>
-                //     echo ucfirst( $status );
-                //     break;
-                // }
 
                 $options = ['pending', 'processed', 'completed', 'failed'];
 
@@ -351,12 +297,6 @@ class StudentsRedeems_Table {
         $screen = get_current_screen();
         if ( $screen->id !== 'edit-students_redeems' ) return;
 
-        // // build a nonceed URL
-        // $url = add_query_arg([
-        //     'export_students_redeems_pending' => '1',
-        //     '_wpnonce' => wp_create_nonce( 'export_students_redeems_pending' ),
-        // ], admin_url( 'edit.php?post_type=students_redeems' ) );
-
         // capture whatever filters are in the URL right now
         $filters = [
             'status_filter'  => $_GET['status_filter']  ?? '',
@@ -404,27 +344,6 @@ add_action('admin_enqueue_scripts', function ($hook) {
     }
 });
 
-// // Working
-// add_action('wp_ajax_update_students_redeems_status', function () {
-//     if (!current_user_can('edit_posts')) {
-//         wp_send_json_error(['message' => 'No permission'], 403);
-//     }
-
-//     if (!isset($_POST['_wpnonce']) || !wp_verify_nonce($_POST['_wpnonce'], 'students_redeems_update_status')) {
-//         wp_send_json_error(['message' => 'Invalid nonce'], 403);
-//     }
-
-//     $post_id = intval($_POST['post_id'] ?? 0);
-//     $status = sanitize_text_field($_POST['status'] ?? '');
-
-//     if (!$post_id || !in_array($status, ['pending', 'processed', 'completed', 'failed'])) {
-//         wp_send_json_error(['message' => 'Invalid input'], 400);
-//     }
-
-//     update_field('status', $status, $post_id);
-//     wp_send_json_success();
-// });
-
 add_action('wp_ajax_update_students_redeems_status', function () {
     if (!current_user_can('edit_posts')) {
         wp_send_json_error(['message' => 'No permission'], 403);
@@ -432,98 +351,6 @@ add_action('wp_ajax_update_students_redeems_status', function () {
     if (!isset($_POST['_wpnonce']) || !wp_verify_nonce($_POST['_wpnonce'], 'students_redeems_update_status')) {
         wp_send_json_error(['message' => 'Invalid nonce'], 403);
     }
-
-    // $post_id   = intval($_POST['post_id']  ?? 0);
-    // $newStatus = sanitize_text_field($_POST['status'] ?? '');
-    // if (!$post_id || !in_array($newStatus, ['pending','processed','completed','failed'])) {
-    //     error_log("PP-ERROR: Invalid input for update_students_redeems_status. post_id={$post_id}, status={$newStatus}");
-    //     wp_send_json_error(['message' => 'Invalid input'], 400);
-    // }
-
-    // // 1) Load old status
-    // $oldStatus = get_field('status', $post_id) ?: 'pending';
-    // error_log("PP: Changing students_redeems #{$post_id} from '{$oldStatus}' to '{$newStatus}'");
-
-    // // 2) Update the status ACF field
-    // update_field('status', $newStatus, $post_id);
-
-    // // 3) Only for reload-based, pending→completed or pending→failed
-    // $reward_raw = get_field('reward_item', $post_id);
-    // $reward_id  = is_array($reward_raw) ? intval($reward_raw[0]) : intval($reward_raw);
-    // $promo_type = get_field('promotion_type', $reward_id);
-
-    // if ($promo_type === 'reload' && $oldStatus === 'pending') {
-    //     // --- completed case ---
-    //     if ($newStatus === 'completed' && ! get_post_meta($post_id, '_email_sent', true)) {
-    //         // send the “granted” email
-    //         $student_raw  = get_field('student', $post_id);
-    //         $student_id   = is_array($student_raw) ? intval($student_raw[0]) : intval($student_raw);
-    //         $student_email= get_field('email', $student_id);
-    //         $reloadValue  = get_field('reload_value', $reward_id);
-
-    //         $subject = 'Your reload has been granted';
-    //         $body    = sprintf(
-    //           "Hi %s,\n\nYour mobile reload of ₹%d has just been applied to your number. Enjoy!\n\n—Differently.study",
-    //           get_the_title($student_id),
-    //           $reloadValue
-    //         );
-    //         // $headers = [
-    //         //     'From: Differently.study <noreply@your‐domain.com>',
-    //         //     'Content-Type: text/plain; charset=UTF-8',
-    //         // ];
-
-    //         error_log("PP: Sending grant-email for post {$post_id} to {$student_email}");
-    //         $sent = wp_mail($student_email, $subject, $body);
-    //         // add_post_meta($post_id, '_email_sent_completed', '1', true);
-    //         if ($sent) {
-    //             error_log("PP: wp_mail SUCCESS for post {$post_id}");
-    //             update_post_meta($post_id, '_email_sent', '1');
-    //         } else {
-    //             error_log("PP-ERROR: wp_mail FAILED for post {$post_id}. To={$student_email}, Subject={$subject}");
-    //         }
-    //     }
-
-    //     // --- failed case ---
-    //     if ($newStatus === 'failed' && ! get_post_meta($post_id, '_email_sent', true)) {
-    //         // send the “failed” email
-    //         $student_raw   = get_field('student', $post_id);
-    //         $student_id    = is_array($student_raw) ? intval($student_raw[0]) : intval($student_raw);
-    //         $student_email = get_field('email', $student_id);
-    //         $coinsCost     = get_field('required_coins', $reward_id);
-    //         $subject = 'Your reload request failed';
-    //         $body    = sprintf(
-    //           "Hi %s,\n\nUnfortunately your reload of this time failed. We have refunded %d coins to your account.\n\n—Differently.study",
-    //           get_the_title($student_id),
-    //           $coinsCost
-    //         );
-    //         // $headers = [
-    //         //     'From: Differently.study <noreply@your‐domain.com>',
-    //         //     'Content-Type: text/plain; charset=UTF-8',
-    //         // ];
-
-    //         error_log("PP: Sending fail-email for post {$post_id} to {$student_email}");
-    //         $sent = wp_mail($student_email, $subject, $body);
-
-    //         // // refund coins into student’s balance
-    //         // $currentCoins = intval(get_field('coins', $student_id));
-    //         // update_field('coins', $currentCoins + $coinsCost, $student_id);
-
-    //         // // add_post_meta($post_id, '_email_sent_failed', '1', true);
-    //         // update_post_meta( $post_id, '_email_sent', '1' );
-
-    //         if ($sent) {
-    //             error_log("PP: wp_mail SUCCESS for post {$post_id} (failed notification)");
-    //             // refund coins on success
-    //             $currentCoins = intval(get_field('coins', $student_id));
-    //             update_field('coins', $currentCoins + $coinsCost, $student_id);
-    //             update_post_meta($post_id, '_email_sent', '1');
-    //         } else {
-    //             error_log("PP-ERROR: wp_mail FAILED for post {$post_id} (failed notification). To={$student_email}, Subject={$subject}");
-    //         }
-    //     }
-    // }
-
-    // wp_send_json_success();
 
     $post_id   = intval($_POST['post_id'] ?? 0);
     $newStatus = sanitize_text_field($_POST['status'] ?? '');
@@ -580,22 +407,30 @@ add_action('wp_ajax_update_students_redeems_status', function () {
                 $student_id = intval($student_raw);
             }
 
+            // gather context
+            $first_name = ucfirst((string)get_field('first_name', $student_id));
+            $last_name = ucfirst((string)get_field('last_name', $student_id));
+            $student_name = trim("$first_name $last_name");
+            $reload_value = intval(get_field('reload_value', $reward_id));
+
+            $context = [
+                'student_name' => $student_name,
+                'reload_value' => $reload_value,
+            ];
+
             // Now fetch the e‑mail
-            // $student_email = get_field('email', $student_id);
-            $student_email = 'cjaliya.sln2@gmail.com';
+             $student_email = get_field('email', $student_id);
+//            $student_email = 'nipunchamika11@gmail.com';
             if (! is_email($student_email)) {
                 error_log("PP-ERROR: No valid student e-mail for post {$post_id} (student_id={$student_id})");
             } else {
-                $reloadValue = intval(get_field('reload_value', $reward_id));
-                $subject     = 'Your reload has been granted';
-                $body        = sprintf(
-                    "Hi %s,\n\nYour mobile reload of ₹%d has just been applied to your number. Enjoy!\n\n—Differently.study",
-                    get_the_title($student_id),
-                    $reloadValue
-                );
+                $subject = \PointsPlus\Emails\get_email_subject('reload-completed', [ 'reload_value' => $reload_value ]);
+                $body = \PointsPlus\Emails\get_email_body('reload-completed', $context);
+
+                $sent = wp_mail($student_email, $subject, $body, $headers);
 
                 error_log("PP: Sending grant-email for post {$post_id} to {$student_email}");
-                $sent = wp_mail($student_email, $subject, $body, $headers);
+                // $sent = wp_mail($student_email, $subject, $body, $headers);
                 if ($sent) {
                     error_log("PP: wp_mail SUCCESS for post {$post_id}");
                     update_post_meta($post_id, '_email_sent', '1');
@@ -619,31 +454,33 @@ add_action('wp_ajax_update_students_redeems_status', function () {
                 $student_id = intval($student_raw);
             }
 
-            // Now fetch the e‑mail
-            // $student_email = get_field('email', $student_id);
-            $student_email = 'cjaliya.sln2@gmail.com';
-            // (normalize student_id exactly the same as above)…
-            // fetch and validate $student_email as above…
-            // then:
-            $coinsCost = intval(get_field('required_coins', $reward_id));
-            $subject   = 'Your reload request failed';
-            $body      = sprintf(
-                "Hi %s,\n\n".
-                "Unfortunately your reload this time failed. We have refunded %d coins to your account.\n\n".
-                "%s\n\n".
-                "—Differently.study",
-                get_the_title($student_id),
-                $coinsCost,
-                $reason ? "Reason: $reason" : ''
-            );
+            $first_name = ucfirst((string)get_field('first_name', $student_id));
+            $last_name = ucfirst((string)get_field('last_name', $student_id));
+            $student_name = trim("$first_name $last_name");
+            $coins_cost = intval( get_field( 'required_coins', $reward_id ) );
 
-            error_log("PP: Sending fail-email for post {$post_id} to {$student_email}");
-            $sent = wp_mail($student_email, $subject, $body, $headers);
+            $context = [
+                'student_name' => $student_name,
+                'coins_cost' => $coins_cost,
+                'reason' => $reason,
+            ];
+
+            // Now fetch the e‑mail
+             $student_email = get_field('email', $student_id);
+//            $student_email = 'nipunchamika11@gmail.com';
+
+            // $subject = 'Your reload request failed';
+            $subject = \PointsPlus\Emails\get_email_subject('reload-failed');
+            $body    = \PointsPlus\Emails\get_email_body( 'reload-failed', $context );
+
+            $sent = wp_mail( $student_email, $subject, $body, $headers );
+
+            error_log("PP: Sending fail-email for post {$post_id} to {$student_email} wiht reason: {$reason}");
             if ($sent) {
                 error_log("PP: wp_mail SUCCESS for failed-notification on post {$post_id}");
                 // refund coins only when mail succeeded
                 $currentCoins = intval(get_field('coins', $student_id));
-                update_field('coins', $currentCoins + $coinsCost, $student_id);
+                update_field('coins', $currentCoins + $coins_cost, $student_id);
                 update_post_meta($post_id, '_email_sent', '1');
             } else {
                 error_log("PP-ERROR: wp_mail FAILED for failed-notification on post {$post_id}. To={$student_email}");

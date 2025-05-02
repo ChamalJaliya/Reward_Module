@@ -4,7 +4,7 @@ namespace PointsPlus\Cron;
 defined('ABSPATH') || exit;
 
 // Custom hook name:
-const HOOK = 'pointsplus_hourly_export';
+const HOOK = 'pointsplus_daily_export';
 const LOCK_KEY = 'pointsplus_export_lock';
 
 /**
@@ -16,15 +16,15 @@ function init(): void {
     register_deactivation_hook(POINTSPLUS_PLUGIN_FILE, __NAMESPACE__ . '\\deactivate');
 
     // Hook our handler to WP-Cron
-    add_action(HOOK, __NAMESPACE__ . '\\handle_hourly_export');
+    add_action(HOOK, __NAMESPACE__ . '\\handle_daily_export');
 
     // Add custom cron schedules
     add_filter('cron_schedules', function($schedules) {
-        // Add hourly schedule if not exists
-        if (!isset($schedules['hourly'])) {
-            $schedules['hourly'] = [
-                'interval' => HOUR_IN_SECONDS,
-                'display'  => __('Every Hour', 'points-plus')
+        // Add daily schedule if not exists
+        if (!isset($schedules['daily'])) {
+            $schedules['daily'] = [
+                'interval' => DAY_IN_SECONDS,
+                'display'  => __('Once Daily', 'points-plus')
             ];
         }
 
@@ -44,49 +44,50 @@ function init(): void {
  * Plugin activation handler
  */
 function activate(): void {
-    schedule_hourly_export();
-    error_log('[PointsPlus] Plugin activated - hourly export scheduled');
+    schedule_daily_export();
+    error_log('[PointsPlus] Plugin activated - daily export scheduled');
 }
 
 /**
  * Plugin deactivation handler
  */
 function deactivate(): void {
-    clear_hourly_export();
-    error_log('[PointsPlus] Plugin deactivated - hourly export cleared');
+    clear_daily_export();
+    error_log('[PointsPlus] Plugin deactivated - daily export cleared');
 }
 
 /**
- * Schedule an hourly event
+ * Schedule a daily event at midnight
  */
-function schedule_hourly_export(): void {
+function schedule_daily_export(): void {
     // First clear any existing schedule
-    clear_hourly_export();
+    clear_daily_export();
+
+    // Calculate next midnight
+    $next_midnight = strtotime('tomorrow midnight');
 
     if (function_exists('as_schedule_recurring_action')) {
         // Use Action Scheduler if available
-        $first_run = time() + 60; // Start in 1 minute for testing
         as_schedule_recurring_action(
-            $first_run,
-            HOUR_IN_SECONDS,
+            $next_midnight,
+            DAY_IN_SECONDS,
             HOOK,
             [],
             'pointsplus'
         );
-        error_log('[PointsPlus] Scheduled hourly export with Action Scheduler starting at ' . date('Y-m-d H:i:s', $first_run));
+        error_log('[PointsPlus] Scheduled daily export with Action Scheduler starting at ' . date('Y-m-d H:i:s', $next_midnight));
         return;
     }
 
     // Fallback to WP-Cron
-    $first_run = time() + 60; // Start in 1 minute for testing
-    wp_schedule_event($first_run, 'hourly', HOOK);
-    error_log('[PointsPlus] Scheduled hourly export starting at ' . date('Y-m-d H:i:s', $first_run));
+    wp_schedule_event($next_midnight, 'daily', HOOK);
+    error_log('[PointsPlus] Scheduled daily export starting at ' . date('Y-m-d H:i:s', $next_midnight));
 }
 
 /**
  * Clear the scheduled event.
  */
-function clear_hourly_export(): void {
+function clear_daily_export(): void {
     if (function_exists('as_unschedule_action')) {
         as_unschedule_all_actions(HOOK);
         error_log('[PointsPlus] Cleared all Action Scheduler events');
@@ -102,7 +103,7 @@ function clear_hourly_export(): void {
 /**
  * Callback: generate the CSV and email it to the admin.
  */
-function handle_hourly_export(): void {
+function handle_daily_export(): void {
     // Prevent concurrent execution
     if (get_transient(LOCK_KEY)) {
         error_log('[PointsPlus] Export already in progress, skipping');
@@ -112,7 +113,7 @@ function handle_hourly_export(): void {
     set_transient(LOCK_KEY, true, 10 * MINUTE_IN_SECONDS);
 
     try {
-        error_log('[PointsPlus] HOURLY export started at ' . date('Y-m-d H:i:s'));
+        error_log('[PointsPlus] DAILY export started at ' . date('Y-m-d H:i:s'));
 
         // 1) Load the exporter
         $export_file = plugin_dir_path(__DIR__) . 'includes/exports/students-redeems-export.php';
@@ -156,13 +157,25 @@ function handle_hourly_export(): void {
         error_log('[PointsPlus] Retrieved ' . $row_count . ' rows for CSV. File: ' . $file);
 
         // 4) Send the email
-        $to = get_option('admin_email');
-        $subject = 'Hourly Pending Reloads Export — ' . date('Y-m-d H:i:s');
-        $body = "This is an automated email from the Points Plus system.\n\n";
-        $body .= "Pending reload redemptions as of " . date('Y-m-d H:i:s') . ":\n";
-        $body .= "- Total records: " . $row_count . "\n\n";
-        $body .= "— Differently.study";
-        $attachments = [$file];
+//        $to = get_option('admin_email');
+//        $subject = 'Daily Pending Reloads Export — ' . date('Y-m-d');
+//        $body = "This is an automated email from the Points Plus system.\n\n";
+//        $body .= "Pending reload redemptions as of " . date('Y-m-d') . ":\n";
+//        $body .= "- Total records: " . $row_count . "\n\n";
+//        $body .= "— Differently.study";
+//        $attachments = [$file];
+        $timestamp = date( 'Y-m-d H:i:s' );
+
+        $context = [
+            'row_count' => $row_count,
+            'timestamp' => $timestamp,
+        ];
+
+        $to = get_option( 'admin_email' );
+        // $subject = 'Hourly Pending Reloads Export — ' . $timestamp;
+        $subject = \PointsPlus\Emails\get_email_subject('export-summary', [ 'timestamp' => $timestamp ]);
+        $body = \PointsPlus\Emails\get_email_body( 'export-summary', $context );
+        $attachments = [ $file ];
 
         try {
             $sent = wp_mail($to, $subject, $body, [], $attachments);
@@ -183,7 +196,7 @@ function handle_hourly_export(): void {
             }
         }
 
-        error_log('[PointsPlus] Hourly export completed at ' . date('Y-m-d H:i:s'));
+        error_log('[PointsPlus] Daily export completed at ' . date('Y-m-d H:i:s'));
     } finally {
         delete_transient(LOCK_KEY);
     }
