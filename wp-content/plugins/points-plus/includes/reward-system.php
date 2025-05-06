@@ -909,16 +909,52 @@ if (!function_exists('handle_redeem_reward_ajax')) :
 
             // 8. Grant reward (only reaches here if all checks passed and confirmed if needed)
             $reward_granted_data = grant_reward($student_post_id, $reward_data, $reward_id);
+            if ($reward_granted_data['success']) {
+                $student_email = get_field('email', $student_post_id);
 
-            if (!$reward_granted_data['success']) {
-                $response = add_system_message(
-                    $response,
-                    $reward_granted_data['message'] ?? esc_html( points_plus_translate('Failed to process reward. Please try again.') ),
-                    'error',
-                    'REWARD_PROCESSING_FAILED'
-                );
-                throw new Exception($reward_granted_data['message'] ?? 'Failed to process reward.');
+                if (is_email($student_email)) {
+                    $subject = 'Reward Redeemed Successfully';
+
+                    $message = "Hello,\n\n";
+                    $message .= "You have successfully redeemed your reward:\n\n";
+
+                    if ($reward_data['promotion_type'] === 'reload') {
+                        $message .= sprintf(
+                            "Mobile Reload: Rs. %d to %s\n",
+                            $reward_data['reload_value'],
+                            get_field('student_mobile', $student_post_id)
+                        );
+                    } else {
+                        $message .= "Reward: " . get_the_title($reward_id) . "\n";
+                    }
+
+                    $message .= sprintf(
+                        "Coins deducted: %d\n\n",
+                        $reward_data['required_coins']
+                    );
+
+                    $message .= "Thank you for using our platform!\n\n";
+                    $message .= "Differently.study Team";
+
+                    // Send plain text email
+                    wp_mail(
+                        $student_email,
+                        $subject,
+                        $message,
+                        ['Content-Type: text/plain; charset=UTF-8']
+                    );
+                }
             }
+//
+//            if (!$reward_granted_data['success']) {
+//                $response = add_system_message(
+//                    $response,
+//                    $reward_granted_data['message'] ?? esc_html( points_plus_translate('Failed to process reward. Please try again.') ),
+//                    'error',
+//                    'REWARD_PROCESSING_FAILED'
+//                );
+//                throw new Exception($reward_granted_data['message'] ?? 'Failed to process reward.');
+//            }
 
             // 9. Success response
             $success_message =  esc_html( points_plus_translate('Reward claimed successfully!') );

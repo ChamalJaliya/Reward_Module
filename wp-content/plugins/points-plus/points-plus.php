@@ -131,6 +131,8 @@ require_once plugin_dir_path(__FILE__) . 'includes/student-profile.php';
 require_once plugin_dir_path(__FILE__) . 'includes/notification-system.php';
 require_once plugin_dir_path(__FILE__) . 'includes/reward-system.php';
 require_once plugin_dir_path(__FILE__) . 'includes/enqueue-scripts.php';
+require_once plugin_dir_path(__FILE__) . 'includes/emails/functions.php';
+
 
 /**
  * Function to create custom database tables.

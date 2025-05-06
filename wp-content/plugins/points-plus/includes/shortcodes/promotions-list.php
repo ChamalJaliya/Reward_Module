@@ -365,6 +365,8 @@ if (!function_exists('promotions_page_shortcode_function')) :
                 $min_quests = get_field('minimum_quests_completed', $post->ID) ?: 0;
                 $valid_from = get_field('valid_from', $post->ID);
                 $valid_until = get_field('valid_until', $post->ID);
+                $start_time = strtotime($valid_from);
+                $end_time = strtotime($valid_until);
 
                 $is_eligible = true;
                 $eligibility_reasons = [];
@@ -402,10 +404,17 @@ if (!function_exists('promotions_page_shortcode_function')) :
                     }
                 }
                 // 4. Check Minimum Quests (Visibility Check)
-                $total_completed_quests = count_all_completed_quests($student_post_id);
+//
+                $completed_quests=get_student_quest_history_in_range(
+                    $student_post_id,
+                    'completed',
+                    $start_time,
+                    $end_time
+                );
+                $total_completed_quests=count($completed_quests);
                 if ($total_completed_quests < $min_quests) {
                     $is_eligible = false;
-                    $eligibility_reasons[] = "Insufficient quests completed to view reward ($total_completed_quests / $min_quests).";
+                    $eligibility_reasons[] = "Insufficient quests completed to view reward ($total_completed_quests) / $min_quests).";
                 } else {
                     $eligibility_reasons[] = "Sufficient quests completed to view reward ($total_completed_quests / $min_quests).";
                 }

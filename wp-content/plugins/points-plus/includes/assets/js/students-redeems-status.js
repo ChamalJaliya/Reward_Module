@@ -36,10 +36,11 @@
             // Build a custom message
             let actionText =
                 newStatus === "completed"
-                    ? `grant ₹${reloadValue} reload`
-                    : `refund ${coinsCost} coins and notify failure`;
+                    ? `grant  a Rs. ${reloadValue} reload`
+                    : `reject this redeem request and refund ${coinsCost} coins and notify  `;
 
-            const msg = `You're about to ${actionText} for student ${studentEmail}.\n\nProceed?`;
+            const msg = `Are you sure you want to  ${actionText} for the student ${studentEmail}.\n\nProceed?This action cannot be undone.
+`;
 
             $("#pp-reload-confirm-text").text(msg);
 

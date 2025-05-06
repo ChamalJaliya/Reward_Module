@@ -125,6 +125,15 @@ class Rewards_Table {
             );
         }
         echo '</select>';
+
+        // ---- Date‐range picker for Valid From ----
+        $from = isset($_GET['valid_from_start']) ? esc_attr( $_GET['valid_from_start'] ) : '';
+        $to   = isset($_GET['valid_from_end'])   ? esc_attr( $_GET['valid_from_end']   ) : '';
+
+        echo '<span style="margin-left:2px;">From: </span>';
+        echo '<input type="date" name="valid_from_start" value="'. $from .'" placeholder="From Valid From" />';
+        echo '<span style="margin-left:2px;">To: </span>';
+        echo '<input type="date" name="valid_from_end"   value="'. $to   .'" placeholder="To Valid From"   />';
     }
 
     /**
@@ -160,6 +169,31 @@ class Rewards_Table {
                 'value'   => sanitize_text_field( $_GET['status_filter'] ),
                 'compare' => '=',
             ];
+        }
+
+        // filter by Valid From range
+        if ( ! empty( $_GET['valid_from_start'] ) ) {
+            $start = sanitize_text_field( $_GET['valid_from_start'] ) . ' 00:00:00';
+            $meta_query[] = [
+                'key'     => 'valid_from',
+                'value'   => $start,
+                'compare' => '>=',
+                'type'    => 'DATETIME',
+            ];
+        }
+
+        if ( ! empty( $_GET['valid_from_end'] ) ) {
+            $end = sanitize_text_field( $_GET['valid_from_end'] ) . ' 23:59:59';
+            $meta_query[] = [
+                'key'     => 'valid_from',
+                'value'   => $end,
+                'compare' => '<=',
+                'type'    => 'DATETIME',
+            ];
+        }
+
+        if ( ! empty( $meta_query ) ) {
+            $query->set( 'meta_query', $meta_query );
         }
 
         if ( ! empty( $meta_query ) ) {
